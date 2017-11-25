@@ -1,0 +1,32 @@
+{
+  "name": "@0x4447/0x4447-s3-hosting",
+  "version": "1.0.0",
+  "description": "Push a static website to S3 and set a CloudFront with SSL in front of it",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/davidgatti/0x4447-s3-hosting"
+  },
+  "bin": {
+    "s3-hosting": "./index.js"
+  },
+  "keywords": [
+    "cli",
+    "nodejs",
+    "0x4447",
+    "s3",
+    "CloudFront",
+    "aws"
+  ],
+  "author": {
+    "name": "0x4447",
+    "email": "hello@0x4447.com",
+    "url": "https://0x4447.com"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "commander": "2.11.0",
+    "request": "2.81.0",
+    "terminal-kit": "1.13.10"
+  }
+}
