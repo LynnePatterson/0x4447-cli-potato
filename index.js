@@ -1,3 +1,4 @@
+let fs = require('fs');
 let npm = require('./package.json');
 let term = require('terminal-kit').terminal;
 let program = require('commander');
@@ -71,16 +72,38 @@ term.clear();
 //	The main container that will be passed around in each chain to collect
 //	all the data and keep it in one place
 //
-let container = {};
-
+let container = {
+	aws_config: process.env.HOME + '/.aws/config',
+	aws_credentials: process.env.HOME + '/.aws/credentials'
+};
 
 //
-//	Lets make a nice first impression
+//	Start the chain
 //
 display_the_welcome_message(container)
 	.then(function(container) {
 
-		return container;
+		return check_for_aws_config(container);
+
+	}).then(function(container) {
+
+		return check_for_aws_credentials(container);
+
+	}).then(function(container) {
+
+		return get_aws_config(container);
+
+	}).then(function(container) {
+
+		return get_aws_credentials(container);
+
+	}).then(function(container) {
+
+		return parse_aws_config(container);
+
+	}).then(function(container) {
+
+		return parse_aws_credentials(container);
 
 	}).then(function(container) {
 
@@ -93,14 +116,17 @@ display_the_welcome_message(container)
 
 	}).catch(function(error) {
 
+		//
+		//	1.	Clear the screen of necessary text
+		//
 		term.clear();
 
 		term("\n\n");
 
 		//
-		//	1.	Show the error message
+		//	2.	Show the error message
 		//
-		term.red("\t" + error.message)
+		term.red("\t" + error.message);
 
 		term("\n\n");
 
@@ -110,7 +136,6 @@ display_the_welcome_message(container)
 		process.exit();
 
 	});
-
 
 //  _____    _____     ____    __  __   _____    _____   ______    _____
 // |  __ \  |  __ \   / __ \  |  \/  | |_   _|  / ____| |  ____|  / ____|
@@ -162,3 +187,140 @@ function display_the_welcome_message(container)
 	});
 }
 
+//
+//	Make sure the Configuration file is actually available in the system
+//
+function check_for_aws_config(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		fs.access(container.aws_config, fs.constants.R_OK, function(error) {
+
+			if(error)
+			{
+				return reject(new Error("Missing config file"));
+			}
+
+			//
+			//	->	Move to the next step
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Make sure the Credentials file is actually available in the system
+//
+function check_for_aws_credentials(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		fs.access(container.aws_credentials, fs.constants.R_OK, function(error) {
+
+			if(error)
+			{
+				return reject(new Error("Missing credentials file"));
+			}
+
+			//
+			//	->	Move to the next step
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Read the configuration file
+//
+function get_aws_config(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		fs.readFile(container.aws_config, function(error, data) {
+
+			//
+			//	1.	Check if there was no error
+			//
+			if(error)
+			{
+				return reject(error);
+			}
+
+			console.log("Config", data);
+
+			//
+			//	->	Move to the next step
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Read the credentials file
+//
+function get_aws_credentials(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		fs.readFile(container.aws_credentials, function(error, data) {
+
+			//
+			//	1.	Check if there was no error
+			//
+			if(error)
+			{
+				return reject(error);
+			}
+
+			console.log("credentials", data);
+
+			//
+			//	->	Move to the next step
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Parse the AWS configuration file in to a JS object so we have easy
+//	access to the data
+//
+function parse_aws_config(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		//
+		//	->	Move to the next step
+		//
+		return resolve(container);
+
+	});
+}
+
+//
+//	Parse the AWS credentials file so we can use that information
+//	to connect to the right account
+//
+function parse_aws_credentials(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		//
+		//	->	Move to the next step
+		//
+		return resolve(container);
+
+	});
+}
