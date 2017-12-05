@@ -1,8 +1,13 @@
 let fs = require('fs');
 let npm = require('./package.json');
+let aws = require('aws-sdk');
 let term = require('terminal-kit').terminal;
+let mime = require('mime-types')
+let read = require('fs-readdir-recursive')
 let program = require('commander');
 let request = require('request');
+
+//http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#putBucketWebsite-property
 
 //   _____   ______   _______   _______   _____   _   _    _____    _____
 //  / ____| |  ____| |__   __| |__   __| |_   _| | \ | |  / ____|  / ____|
@@ -74,7 +79,8 @@ term.clear();
 //
 let container = {
 	aws_config: process.env.HOME + '/.aws/config',
-	aws_credentials: process.env.HOME + '/.aws/credentials'
+	aws_credentials: process.env.HOME + '/.aws/credentials',
+	dir: '/home/dg/Documents/0x4447.com'
 };
 
 //
@@ -83,27 +89,51 @@ let container = {
 display_the_welcome_message(container)
 	.then(function(container) {
 
-		return check_for_aws_config(container);
+		return ask_if_new_or_update(container);
 
 	}).then(function(container) {
 
-		return check_for_aws_credentials(container);
+		return ask_for_aws_key(container);
 
 	}).then(function(container) {
 
-		return get_aws_config(container);
+		return ask_for_aws_secret(container);
 
 	}).then(function(container) {
 
-		return get_aws_credentials(container);
+		return create_aws_class(container);
 
 	}).then(function(container) {
 
-		return parse_aws_config(container);
+		return check_aws_permissions(container);
 
 	}).then(function(container) {
 
-		return parse_aws_credentials(container);
+		return get_s3_buckets(container);
+
+	}).then(function(container) {
+
+		return pick_a_bucket(container);
+
+	}).then(function(container) {
+
+		return read_all_files(container);
+
+	}).then(function(container) {
+
+		return container //proxy_uploader(container);
+
+	}).then(function(container) {
+
+		return list_cloudFront_distributions(container);
+
+	}).then(function(container) {
+
+		return get_distribution_id(container);
+
+	}).then(function(container) {
+
+		return container //invalidate_cloudfront(container);
 
 	}).then(function(container) {
 
@@ -116,6 +146,7 @@ display_the_welcome_message(container)
 
 	}).catch(function(error) {
 
+		console.log(error)
 		//
 		//	1.	Clear the screen of necessary text
 		//
@@ -126,7 +157,7 @@ display_the_welcome_message(container)
 		//
 		//	2.	Show the error message
 		//
-		term.red("\t" + error.message);
+		term.red("\t" + error);
 
 		term("\n\n");
 
@@ -174,12 +205,15 @@ function display_the_welcome_message(container)
 		//
 		term.slowTyping(text, options, function() {
 
-			term("\n");
 
-			//
-			//	->	Move to the next step once the animation finishes drawing
-			//
-			return resolve(container);
+			setTimeout(function() {
+
+				//
+				//	->	Move to the next step once the animation finishes drawing
+				//
+				return resolve(container);
+
+			}, 1000)
 
 		});
 
@@ -190,19 +224,99 @@ function display_the_welcome_message(container)
 //
 //	Make sure the Configuration file is actually available in the system
 //
-function check_for_aws_config(container)
+function ask_if_new_or_update(container)
 {
 	return new Promise(function(resolve, reject) {
 
-		fs.access(container.aws_config, fs.constants.R_OK, function(error) {
+		term.clear();
 
-			if(error)
-			{
-				return reject(new Error("Missing config file"));
-			}
+		term("\n");
+
+		//
+		//	1.	Draw the menu with one tab to the left to so the UI stay
+		//		consistent
+		//
+		let options = {
+			leftPadding: "\t"
+		}
+
+		//
+		//
+		//
+		let question = [
+			'Update',
+			'Create'
+		]
+
+		//
+		//	2.	Tell the user what we want from hi or her
+		//
+		term.yellow("\tUpdate or create a new website?");
+
+		term('\n');
+
+		//
+		//	3.	Draw the drop down menu
+		//
+		term.singleColumnMenu(question, options, function(error, res) {
+
+			term("\n");
+
+			term.yellow("\tLoading...");
 
 			//
-			//	->	Move to the next step
+			//	1.	Get the Property name based on the user selection
+			//
+			let selection = question[res.selectedIndex];
+
+			//
+			//	2.	Save the selection for other promises to use. It will
+			//		be used in API calls
+			//
+			container.selection = selection;
+
+			//
+			//	->	Move to the next chain
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Make sure the Configuration file is actually available in the system
+//
+function ask_for_aws_key(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		//
+		//	1.	Ask input from the user
+		//
+		term.yellow("\tPlease paste your AWS Access Key ID: ");
+
+		//
+		//	2.	Listen for the user input
+		//
+		term.inputField({}, function(error, aws_access_key_id) {
+
+			term("\n");
+
+			term.yellow("\tLoading...");
+
+			//
+			//	1.	Save the URL
+			//
+			container.aws_access_key_id = aws_access_key_id;
+
+			//
+			//	-> Move to the next chain
 			//
 			return resolve(container);
 
@@ -214,19 +328,35 @@ function check_for_aws_config(container)
 //
 //	Make sure the Credentials file is actually available in the system
 //
-function check_for_aws_credentials(container)
+function ask_for_aws_secret(container)
 {
 	return new Promise(function(resolve, reject) {
 
-		fs.access(container.aws_credentials, fs.constants.R_OK, function(error) {
+		term.clear();
 
-			if(error)
-			{
-				return reject(new Error("Missing credentials file"));
-			}
+		term("\n");
+
+		//
+		//	1.	Ask input from the user
+		//
+		term.yellow("\tPlease paste your AWS Secret Access Key: ");
+
+		//
+		//	2.	Listen for the user input
+		//
+		term.inputField({}, function(error, aws_secret_access_key) {
+
+			term("\n");
+
+			term.yellow("\tLoading...");
 
 			//
-			//	->	Move to the next step
+			//	1.	Save the URL
+			//
+			container.aws_secret_access_key = aws_secret_access_key;
+
+			//
+			//	-> Move to the next chain
 			//
 			return resolve(container);
 
@@ -238,24 +368,55 @@ function check_for_aws_credentials(container)
 //
 //	Read the configuration file
 //
-function get_aws_config(container)
+function create_aws_class(container)
 {
 	return new Promise(function(resolve, reject) {
 
-		fs.readFile(container.aws_config, function(error, data) {
+		//
+		//	1.	Create the AWS object
+		//
+		container.s3 = new aws.S3({
+			region: 'us-east-1',
+			accessKeyId: container.aws_access_key_id,
+			secretAccessKey: container.aws_secret_access_key
+		});
+
+		//
+		//	1.	Create the AWS object
+		//
+		container.cloudfront = new aws.CloudFront({
+			region: 'us-east-1',
+			accessKeyId: container.aws_access_key_id,
+			secretAccessKey: container.aws_secret_access_key
+		});
+
+		//
+		//	-> Move to the next chain
+		//
+		return resolve(container);
+
+	});
+}
+
+//
+//	Read the configuration file
+//
+function check_aws_permissions(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		container.s3.listBuckets(function(error, data) {
 
 			//
-			//	1.	Check if there was no error
+			//	1.	Check if there was an error
 			//
 			if(error)
 			{
-				return reject(error);
+				return reject(error)
 			}
 
-			console.log("Config", data);
-
 			//
-			//	->	Move to the next step
+			//	-> Move to the next chain
 			//
 			return resolve(container);
 
@@ -265,26 +426,89 @@ function get_aws_config(container)
 }
 
 //
-//	Read the credentials file
+//	Read the configuration file
 //
-function get_aws_credentials(container)
+function get_s3_buckets(container)
 {
 	return new Promise(function(resolve, reject) {
 
-		fs.readFile(container.aws_credentials, function(error, data) {
+		container.s3.listBuckets(function(error, data) {
 
 			//
-			//	1.	Check if there was no error
+			//	1.	Check if there was an error
 			//
 			if(error)
 			{
 				return reject(error);
 			}
 
-			console.log("credentials", data);
+			let buckets = []
+
+			data.Buckets.forEach(function(bucket) {
+
+				buckets.push(bucket.Name);
+
+			});
+
+			container.buckets = buckets;
 
 			//
-			//	->	Move to the next step
+			//	-> Move to the next chain
+			//
+			return resolve(container);
+
+		});
+	});
+}
+
+//
+//	Make sure the Configuration file is actually available in the system
+//
+function pick_a_bucket(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		//
+		//	1.	Draw the menu with one tab to the left to so the UI stay
+		//		consistent
+		//
+		let options = {
+			leftPadding: "\t"
+		}
+
+		//
+		//	2.	Tell the user what we want from hi or her
+		//
+		term.yellow("\tChoose the bucket that you want to update");
+
+		term('\n');
+
+		//
+		//	3.	Draw the drop down menu
+		//
+		term.singleColumnMenu(container.buckets, options, function(error, res) {
+
+			term("\n");
+
+			term.yellow("\tLoading...");
+
+			//
+			//	1.	Get the Property name based on the user selection
+			//
+			let bucket = container.buckets[res.selectedIndex];
+
+			//
+			//	2.	Save the selection for other promises to use. It will
+			//		be used in API calls
+			//
+			container.bucket = bucket;
+
+			//
+			//	->	Move to the next chain
 			//
 			return resolve(container);
 
@@ -294,15 +518,24 @@ function get_aws_credentials(container)
 }
 
 //
-//	Parse the AWS configuration file in to a JS object so we have easy
-//	access to the data
+//	Read all the files in the directory
 //
-function parse_aws_config(container)
+function read_all_files(container)
 {
 	return new Promise(function(resolve, reject) {
 
 		//
-		//	->	Move to the next step
+		//	Read all file coercively
+		//
+		let files = read(container.dir)
+
+		//
+		//
+		//
+		container.files = files;
+
+		//
+		//	->	Move to the next chain
 		//
 		return resolve(container);
 
@@ -310,17 +543,157 @@ function parse_aws_config(container)
 }
 
 //
-//	Parse the AWS credentials file so we can use that information
-//	to connect to the right account
+//	Read all the files in the directory
 //
-function parse_aws_credentials(container)
+function proxy_uploader(container)
 {
 	return new Promise(function(resolve, reject) {
 
+		uploader(container, function() {
+
+			//
+			//	->	Move to the next chain
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Read all the files in the directory
+//
+function list_cloudFront_distributions(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		container.cloudfront.listDistributions({}, function(error, data) {
+
+			//
+			//
+			//
+			if(error)
+			{
+				return reject(error);
+			}
+
+			//
+			//	2.	Save all the distributions
+			//
+			container.distribution_list = data.DistributionList.Items;
+
+			//
+			//	->	Move to the next chain
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Read all the files in the directory
+//
+function get_distribution_id(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		let size = container.distribution_list.length;
+
+		for(i = 0; i < size; i++)
+		{
+			console.log(container.distribution_list[i].Origins.Items)
+		}
+
 		//
-		//	->	Move to the next step
+		//	->	Move to the next chain
 		//
 		return resolve(container);
 
 	});
+}
+
+//
+//	Read all the files in the directory
+//
+function invalidate_cloudfront(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		var params = {
+			DistributionId: 'E3KWY6RFS0FUFE',
+			InvalidationBatch: {
+				CallerReference: new Date().toString(),
+				Paths: {
+					Quantity: 1,
+					Items: ["/*"]
+				}
+			}
+		};
+
+		container.cloudfront.createInvalidation(params, function(error, data) {
+
+			if(error)
+			{
+				return reject(error);
+			}
+
+			console.log(data)
+
+			//
+			//	->	Move to the next chain
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Make sure the Configuration file is actually available in the system
+//
+function uploader(container, callback)
+{
+
+	let file = container.files.shift();
+
+	if(!file)
+	{
+		return callback();
+	}
+
+	let full_path_file = container.dir + '/' + file
+
+	let mime_type = mime.lookup(full_path_file)
+
+	let params = {
+		Bucket: container.bucket,
+		Key: file,
+		ContentType: mime_type,
+		Body: fs.createReadStream(full_path_file)
+	};
+
+	container.s3.upload(params, function(error, data) {
+
+		//
+		//	1.	Check if there was an error
+		//
+		if(error)
+		{
+			return reject(error);
+		}
+
+		console.log(data.Location);
+
+		//
+		//
+		//
+		uploader(container, callback)
+
+	});
+
+
 }
