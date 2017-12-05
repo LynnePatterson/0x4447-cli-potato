@@ -2,6 +2,7 @@ let fs = require('fs');
 let npm = require('./package.json');
 let aws = require('aws-sdk');
 let term = require('terminal-kit').terminal;
+let path = require('path');
 let mime = require('mime-types')
 let read = require('fs-readdir-recursive')
 let program = require('commander');
@@ -60,6 +61,8 @@ term.on('key', function(name, matches, data ) {
 
 });
 
+let progress_bar = "";
+
 //	 __  __              _____   _   _
 //	|  \/  |     /\     |_   _| | \ | |
 //	| \  / |    /  \      | |   |  \| |
@@ -117,26 +120,23 @@ display_the_welcome_message(container)
 
 	}).then(function(container) {
 
+		return ask_for_the_distribution_id(container);
+
+	}).then(function(container) {
+
 		return read_all_files(container);
 
 	}).then(function(container) {
 
-		return container //proxy_uploader(container);
+		return proxy_uploader(container);
 
 	}).then(function(container) {
 
-		return list_cloudFront_distributions(container);
+		return invalidate_cloudfront(container);
 
 	}).then(function(container) {
 
-		return get_distribution_id(container);
-
-	}).then(function(container) {
-
-		return container //invalidate_cloudfront(container);
-
-	}).then(function(container) {
-
+		term("\n");
 		term("\n");
 
 		//
@@ -518,6 +518,46 @@ function pick_a_bucket(container)
 }
 
 //
+//	Make sure the Configuration file is actually available in the system
+//
+function ask_for_the_distribution_id(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		//
+		//	1.	Ask input from the user
+		//
+		term.yellow("\tEnter the CloudFront Distribution ID: ");
+
+		//
+		//	2.	Listen for the user input
+		//
+		term.inputField({}, function(error, distribution_id) {
+
+			term("\n");
+
+			term.yellow("\tLoading...");
+
+			//
+			//	1.	Save the URL
+			//
+			container.distribution_id = distribution_id;
+
+			//
+			//	-> Move to the next chain
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
 //	Read all the files in the directory
 //
 function read_all_files(container)
@@ -525,12 +565,27 @@ function read_all_files(container)
 	return new Promise(function(resolve, reject) {
 
 		//
-		//	Read all file coercively
+		//	2.	Read all file recursively
 		//
 		let files = read(container.dir)
+					.filter(function(name) {
+
+						if(name[0] !== '.')
+						{
+							return true;
+						}
+
+					}).filter(function(name) {
+
+						if(name !== 'README.md')
+						{
+							return true;
+						}
+
+					});
 
 		//
-		//
+		//	3.	Save all the files that we got
 		//
 		container.files = files;
 
@@ -549,6 +604,31 @@ function proxy_uploader(container)
 {
 	return new Promise(function(resolve, reject) {
 
+		term.clear();
+
+		term("\n");
+
+		term.brightWhite("\tUpload process begun...");
+
+		term("\n");
+
+		term.brightWhite("\tFrom this point on, you won't be needed.");
+
+		term("\n");
+
+		term.brightWhite("\tTake a brake...");
+
+		term("\n");
+		term("\n");
+
+		progress_bar = term.progressBar({
+			width: 80,
+			title: '\tUploading:',
+			percent: true,
+			eta: true,
+			items: container.files.length
+		});
+
 		uploader(container, function() {
 
 			//
@@ -564,66 +644,12 @@ function proxy_uploader(container)
 //
 //	Read all the files in the directory
 //
-function list_cloudFront_distributions(container)
-{
-	return new Promise(function(resolve, reject) {
-
-		container.cloudfront.listDistributions({}, function(error, data) {
-
-			//
-			//
-			//
-			if(error)
-			{
-				return reject(error);
-			}
-
-			//
-			//	2.	Save all the distributions
-			//
-			container.distribution_list = data.DistributionList.Items;
-
-			//
-			//	->	Move to the next chain
-			//
-			return resolve(container);
-
-		});
-
-	});
-}
-
-//
-//	Read all the files in the directory
-//
-function get_distribution_id(container)
-{
-	return new Promise(function(resolve, reject) {
-
-		let size = container.distribution_list.length;
-
-		for(i = 0; i < size; i++)
-		{
-			console.log(container.distribution_list[i].Origins.Items)
-		}
-
-		//
-		//	->	Move to the next chain
-		//
-		return resolve(container);
-
-	});
-}
-
-//
-//	Read all the files in the directory
-//
 function invalidate_cloudfront(container)
 {
 	return new Promise(function(resolve, reject) {
 
 		var params = {
-			DistributionId: 'E3KWY6RFS0FUFE',
+			DistributionId: container.distribution_id,
 			InvalidationBatch: {
 				CallerReference: new Date().toString(),
 				Paths: {
@@ -639,8 +665,6 @@ function invalidate_cloudfront(container)
 			{
 				return reject(error);
 			}
-
-			console.log(data)
 
 			//
 			//	->	Move to the next chain
@@ -669,6 +693,11 @@ function uploader(container, callback)
 
 	let mime_type = mime.lookup(full_path_file)
 
+
+	let base_name = path.basename(file);
+
+	progress_bar.startItem(base_name);
+
 	let params = {
 		Bucket: container.bucket,
 		Key: file,
@@ -686,7 +715,7 @@ function uploader(container, callback)
 			return reject(error);
 		}
 
-		console.log(data.Location);
+		progress_bar.itemDone(file);
 
 		//
 		//
