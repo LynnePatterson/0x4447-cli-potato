@@ -331,7 +331,7 @@ function create_aws_class(container)
 	return new Promise(function(resolve, reject) {
 
 		//
-		//	1.	Create the AWS object
+		//	1.	Create the AWS S3 object
 		//
 		container.s3 = new aws.S3({
 			region: 'us-east-1',
@@ -340,10 +340,26 @@ function create_aws_class(container)
 		});
 
 		//
-		//	1.	Create the AWS object
+		//	2.	Create the AWS CloudFront object
 		//
 		container.cloudfront = new aws.CloudFront({
 			region: 'us-east-1',
+			accessKeyId: container.aws_access_key_id,
+			secretAccessKey: container.aws_secret_access_key
+		});
+
+		//
+		//	3.	Create the AWS Route 53 Domains object
+		//
+		container.route53domains = new aws.CloudFront({
+			accessKeyId: container.aws_access_key_id,
+			secretAccessKey: container.aws_secret_access_key
+		});
+
+		//
+		//	4.	Create the AWS Route 53 object
+		//
+		container.route53 = new aws.CloudFront({
 			accessKeyId: container.aws_access_key_id,
 			secretAccessKey: container.aws_secret_access_key
 		});

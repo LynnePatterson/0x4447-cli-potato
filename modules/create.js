@@ -28,7 +28,11 @@ module.exports = function(container) {
 
 			}).then(function(container) {
 
-				return check_route_53_for_domain(container)
+				return list_hosted_zones(container)
+
+			}).then(function(container) {
+
+				return look_for_domain(container)
 
 			}).then(function(container) {
 
@@ -166,6 +170,8 @@ function create_a_bucket(container)
 			{
 				return reject(error);
 			}
+
+			console.log(data)
 
 			//
 			//	-> Move to the next chain
@@ -339,6 +345,11 @@ function create_a_distribution(container)
 			}
 
 			//
+			//	2.	Save the unique domain name of CloudFront
+			//
+			container.cloudfront_domain_name = data.Distribution.DomainName
+
+			//
 			//	-> Move to the next chain
 			//
 			return resolve(container);
@@ -349,12 +360,76 @@ function create_a_distribution(container)
 }
 
 //
-//	Query route 53 to see if the domain entered by the users is present in
-//	Route 53, if so we can automatically create a record
+//	Query route 53 to get all the domains that are available
 //
-function check_route_53_for_domain(container)
+function list_hosted_zones(container)
 {
 	return new Promise(function(resolve, reject) {
+
+		//
+		//	1.
+		//
+		route53.listHostedZones({}, function(error, data) {
+
+			//
+			//	1.	Check if there was an error
+			//
+			if(error)
+			{
+				return reject(error);
+			}
+
+			//
+			//	3.	Save the result for the next chain
+			//
+			container.zones = data.HostedZones;
+
+			//
+			//	-> Move to the next chain
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Query route 53 to get all the domains that are available
+//
+function look_for_domain(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		//
+		//	1.	Create a variable that will store the Zone ID
+		//
+		let zone_id = '';
+
+		//
+		//	2.	Loop over all the Zones that we got to look for the
+		//		domain and grab the Zone ID
+		//
+		for(let key in container.zones)
+		{
+			if(container.zones[key].Name == container.bucket)
+			{
+				//
+				//	1.	Save the Zone ID
+				//
+				zone_id = container.zones[key].Id
+
+				//
+				//	->	Brake to preserve CPU cycles
+				//
+				break;
+			}
+		}
+
+		//
+		//	3.	Save the zone ID for later
+		//
+		container.zone_id = zone_id;
 
 		//
 		//	-> Move to the next chain
@@ -362,6 +437,7 @@ function check_route_53_for_domain(container)
 		return resolve(container);
 
 	});
+
 }
 
 //
@@ -371,6 +447,60 @@ function check_route_53_for_domain(container)
 function create_a_route_53_record(container)
 {
 	return new Promise(function(resolve, reject) {
+
+		//
+		//	1.	Update a record only if we have the domain in ROute 53
+		//
+		if(!container.zone_id)
+		{
+			//
+			//	-> Move to the next chain
+			//
+			return resolve(container);
+		}
+
+		//
+		//	2.	All the options to add a new record
+		//
+		let options = {
+			ChangeBatch: {
+				Changes: [
+				{
+					Action: "CREATE",
+					ResourceRecordSet: {
+						Name: container.bucket,
+						ResourceRecords: [{
+							Value: container.cloudfront_domain_name
+						}],
+						TTL: 60,
+						Type: "A"
+					}
+				}
+				],
+				Comment: "S3 Hosted site"
+			},
+			HostedZoneId: container.zone_id
+		}
+
+		//
+		//	3.	Execute the change on Route 53
+		//
+		container.route53.changeResourceRecordSets({}, function(error, data) {
+
+			//
+			//	1.	Check if there was an error
+			//
+			if(error)
+			{
+				return reject(error);
+			}
+
+			//
+			//	-> Move to the next chain
+			//
+			return resolve(container);
+
+		});
 
 		//
 		//	-> Move to the next chain
@@ -388,6 +518,36 @@ function create_a_route_53_record(container)
 function print_domain_configuration(container)
 {
 	return new Promise(function(resolve, reject) {
+
+		//
+		//	1.	Skip this step if we have the domain in Route 53 because
+		//		it means that we were able to automatically update
+		//		the record
+		//
+		if(container.zone_id)
+		{
+			//
+			//	-> Move to the next chain
+			//
+			return resolve(container);
+		}
+
+		term.clear();
+
+		term("\n");
+
+		term.brightWhite("\tPlease update your DNS record with the following...");
+
+		term("\n");
+
+		term.brightWhite("\tPoint your domain name " + container.bucket + " to the following A record");
+
+		term("\n");
+
+		term.brightWhite("\tdpay1oaanx75p.cloudfront.net.");
+
+		term("\n");
+		term("\n");
 
 		//
 		//	-> Move to the next chain
