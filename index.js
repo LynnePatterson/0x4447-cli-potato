@@ -81,9 +81,10 @@ term.clear();
 let container = {
 	aws_config: process.env.HOME + '/.aws/config',
 	aws_credentials: process.env.HOME + '/.aws/credentials',
-	dir: '/home/dg/Documents/0x4447.com'
+	dir: '/Users/davidgatti/Documents/GitHub/Personal/gatti.pl'
 };
 
+	//dir: '/home/dg/Documents/0x4447.com'
 //
 //	Start the chain
 //
@@ -349,17 +350,9 @@ function create_aws_class(container)
 		});
 
 		//
-		//	3.	Create the AWS Route 53 Domains object
-		//
-		container.route53domains = new aws.CloudFront({
-			accessKeyId: container.aws_access_key_id,
-			secretAccessKey: container.aws_secret_access_key
-		});
-
-		//
 		//	4.	Create the AWS Route 53 object
 		//
-		container.route53 = new aws.CloudFront({
+		container.route53 = new aws.Route53({
 			accessKeyId: container.aws_access_key_id,
 			secretAccessKey: container.aws_secret_access_key
 		});

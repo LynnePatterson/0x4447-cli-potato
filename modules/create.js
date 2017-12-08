@@ -1,5 +1,6 @@
+let url = require('url');
 let term = require('terminal-kit').terminal;
-let upload = require('./helpers/upload');
+let upload = require('../helpers/upload');
 
 module.exports = function(container) {
 
@@ -89,9 +90,17 @@ function ask_for_the_domain(container)
 			term.yellow("\tLoading...");
 
 			//
-			//	1.	Save the URL
+			//	1.	Save the URL while getting the base domain, for example:
 			//
-			container.bucket = bucket;
+			//		subdomain.0x4447.com
+			//
+			//		becomes
+			//
+			//		0x4447.com
+			//
+			//		No matter how deep the sobdomain goes.
+			//
+			container.bucket = bucket.split('.').slice(-2).join('.');
 
 			//
 			//	-> Move to the next chain
@@ -171,7 +180,15 @@ function create_a_bucket(container)
 				return reject(error);
 			}
 
-			console.log(data)
+			//
+			//	2.	Pares the S3 Bucket URL
+			//
+			let bucket_url = url.parse(data.Location);
+
+			//
+			//	3.	Get and save only the hostname part
+			//
+			container.bucket_url_path = bucket_url.hostname
 
 			//
 			//	-> Move to the next chain
@@ -262,7 +279,7 @@ function create_a_distribution(container)
 						}
 					},
 					MinTTL: 0,
-					TargetOriginId: 'gatti.pl.s3-website-us-west-1.amazonaws.com',
+					TargetOriginId: container.bucket_url_path,
 					TrustedSigners: {
 						Enabled: false,
 						Quantity: 0
@@ -288,8 +305,8 @@ function create_a_distribution(container)
 				Origins: {
 					Quantity: 1,
 					Items: [{
-						DomainName: 'gatti.pl.s3-website-us-west-1.amazonaws.com',
-						Id: 'gatti.pl.s3-website-us-west-1.amazonaws.com',
+						DomainName: container.bucket_url_path,
+						Id: container.bucket_url_path,
 						CustomOriginConfig: {
 							HTTPPort: 80,
 							HTTPSPort: 443,
@@ -314,7 +331,7 @@ function create_a_distribution(container)
 				DefaultRootObject: 'index.html',
 				HttpVersion: 'http2',
 				IsIPV6Enabled: true,
-				PriceClass: 'PriceClass_All',
+				PriceClass: 'PriceClass_100',
 				Restrictions: {
 					GeoRestriction: {
 						Quantity: 0,
@@ -369,7 +386,7 @@ function list_hosted_zones(container)
 		//
 		//	1.
 		//
-		route53.listHostedZones({}, function(error, data) {
+		container.route53.listHostedZones({}, function(error, data) {
 
 			//
 			//	1.	Check if there was an error
@@ -412,12 +429,15 @@ function look_for_domain(container)
 		//
 		for(let key in container.zones)
 		{
-			if(container.zones[key].Name == container.bucket)
+			//
+			//	1.	Compare the domains
+			//
+			if(container.zones[key].Name == container.bucket + '.')
 			{
 				//
 				//	1.	Save the Zone ID
 				//
-				zone_id = container.zones[key].Id
+				zone_id = container.zones[key].Id.split("/")[2]
 
 				//
 				//	->	Brake to preserve CPU cycles
@@ -464,28 +484,27 @@ function create_a_route_53_record(container)
 		//
 		let options = {
 			ChangeBatch: {
-				Changes: [
-				{
+				Changes: [{
 					Action: "CREATE",
 					ResourceRecordSet: {
+						AliasTarget: {
+							DNSName: container.cloudfront_domain_name,
+							EvaluateTargetHealth: false,
+							HostedZoneId: 'Z2FDTNDATAQYW2' // Fixed ID CloudFront distribution
+						},
 						Name: container.bucket,
-						ResourceRecords: [{
-							Value: container.cloudfront_domain_name
-						}],
-						TTL: 60,
 						Type: "A"
 					}
-				}
-				],
-				Comment: "S3 Hosted site"
+				}],
+				Comment: "S3 Hosted Site"
 			},
 			HostedZoneId: container.zone_id
-		}
+		};
 
 		//
 		//	3.	Execute the change on Route 53
 		//
-		container.route53.changeResourceRecordSets({}, function(error, data) {
+		container.route53.changeResourceRecordSets(options, function(error, data) {
 
 			//
 			//	1.	Check if there was an error
@@ -501,11 +520,6 @@ function create_a_route_53_record(container)
 			return resolve(container);
 
 		});
-
-		//
-		//	-> Move to the next chain
-		//
-		return resolve(container);
 
 	});
 }
@@ -544,7 +558,7 @@ function print_domain_configuration(container)
 
 		term("\n");
 
-		term.brightWhite("\tdpay1oaanx75p.cloudfront.net.");
+		term.brightWhite("\t" + container.cloudfront_domain_name);
 
 		term("\n");
 		term("\n");

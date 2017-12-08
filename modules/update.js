@@ -1,5 +1,5 @@
 let term = require('terminal-kit').terminal;
-let upload = require('./helpers/upload');
+let upload = require('../helpers/upload');
 
 module.exports = function(container) {
 
