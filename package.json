@@ -5,7 +5,7 @@
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/davidgatti/0x4447-s3-hosting"
+    "url": "https://github.com/0x4447/0x4447-cli-s3-hosting"
   },
   "bin": {
     "s3-hosting": "./index.js"
@@ -25,11 +25,11 @@
   },
   "license": "MIT",
   "dependencies": {
-    "aws-sdk": "^2.162.0",
+    "aws-sdk": "2.162.0",
     "commander": "2.11.0",
     "fs-readdir-recursive": "^1.1.0",
     "mime-types": "^2.1.17",
-    "read-dir-files": "^0.1.1",
+    "read-dir-files": "0.1.1",
     "request": "2.81.0",
     "terminal-kit": "1.13.10"
   }

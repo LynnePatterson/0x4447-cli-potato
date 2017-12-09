@@ -58,3 +58,4 @@ typings/
 .env
 
 r_and_d*
+*.DS_Store

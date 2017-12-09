@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 let npm = require('./package.json');
 let aws = require('aws-sdk');
 let term = require('terminal-kit').terminal;
