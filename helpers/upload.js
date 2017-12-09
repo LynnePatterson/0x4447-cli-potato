@@ -4,6 +4,11 @@ let mime = require('mime-types')
 let path = require('path');
 let term = require('terminal-kit').terminal;
 
+//
+//	Make a variable for the progress bar to use across this code base
+//
+let progress_bar;
+
 module.exports = function(container) {
 
 	return new Promise(function(resolve, reject) {
@@ -42,7 +47,7 @@ function read_all_files(container)
 	return new Promise(function(resolve, reject) {
 
 		//
-		//	2.	Read all file recursively
+		//	1.	Read all file recursively
 		//
 		let files = read(container.dir)
 					.filter(function(name) {
@@ -62,7 +67,7 @@ function read_all_files(container)
 					});
 
 		//
-		//	3.	Save all the files that we got
+		//	2.	Save all the files that we got
 		//
 		container.files = files;
 
@@ -80,6 +85,17 @@ function read_all_files(container)
 function proxy_uploader(container)
 {
 	return new Promise(function(resolve, reject) {
+
+		//
+		//	1.	Upload to S3 only if we actually have files to be uploaded.
+		//
+		if(container.files.length === 0)
+		{
+			//
+			//	->	Move to the next chain
+			//
+			return resolve(container);
+		}
 
 		term.clear();
 
@@ -142,7 +158,6 @@ function uploader(container, callback)
 	let full_path_file = container.dir + '/' + file
 
 	let mime_type = mime.lookup(full_path_file)
-
 
 	let base_name = path.basename(file);
 

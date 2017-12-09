@@ -290,7 +290,7 @@ function change_bucket_policy(container)
 					Effect: 'Allow',
 					Principal: '*',
 					Action: 's3:GetObject',
-					Resource: 'arn:aws:s3:::' + counter.bucket + '/*'
+					Resource: 'arn:aws:s3:::' + container.bucket + '/*'
 				}
 				]
 			})

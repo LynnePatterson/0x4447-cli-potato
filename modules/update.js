@@ -145,6 +145,9 @@ function pick_a_bucket(container)
 //
 //	.upload();
 
+//
+//
+//
 function list_cloudfront_distributions(container)
 {
 	return new Promise(function(resolve, reject) {
@@ -174,6 +177,9 @@ function list_cloudfront_distributions(container)
 	});
 }
 
+//
+//
+//
 function look_for_distribution_id(container)
 {
 	return new Promise(function(resolve, reject) {
@@ -226,7 +232,10 @@ function invalidate_cloudfront(container)
 {
 	return new Promise(function(resolve, reject) {
 
-		var params = {
+		//
+		//
+		//
+		let params = {
 			DistributionId: container.distribution_id,
 			InvalidationBatch: {
 				CallerReference: new Date().toString(),
@@ -237,11 +246,14 @@ function invalidate_cloudfront(container)
 			}
 		};
 
+		//
+		//
+		//
 		container.cloudfront.createInvalidation(params, function(error, data) {
 
 			if(error)
 			{
-				return reject(error);
+				return reject(new Error(error.message));
 			}
 
 			//

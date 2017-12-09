@@ -20,7 +20,9 @@ let program = require('commander');
 //	The CLI options for this app. At this moment we just support Version
 //
 program
-	.version(npm.version);
+	.version(npm.version)
+	.option('-s, --source', 'path to the folder to upload')
+	.parse(process.argv);
 
 //
 //	Just add an empty line at the end of the help to make the text more clear
@@ -59,7 +61,14 @@ term.on('key', function(name, matches, data ) {
 
 });
 
-let progress_bar = "";
+//
+//	Check if the user provided the dir source where to copy the file from
+//
+if(!program.source)
+{
+	console.log('Missing source')
+	process.exit(0)
+}
 
 //	 __  __              _____   _   _
 //	|  \/  |     /\     |_   _| | \ | |
@@ -79,12 +88,9 @@ term.clear();
 //	all the data and keep it in one place
 //
 let container = {
-	aws_config: process.env.HOME + '/.aws/config',
-	aws_credentials: process.env.HOME + '/.aws/credentials',
-	dir: '/Users/davidgatti/Documents/GitHub/Personal/gatti.pl'
+	dir: process.cwd() + "/" + process.argv[3],
 };
 
-	//dir: '/home/dg/Documents/0x4447.com'
 //
 //	Start the chain
 //
