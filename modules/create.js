@@ -21,6 +21,10 @@ module.exports = function(container) {
 
 			}).then(function(container) {
 
+				return change_bucket_policy(container)
+
+			}).then(function(container) {
+
 				return upload(container)
 
 			}).then(function(container) {
@@ -246,6 +250,56 @@ function convert_bucket_to_site(container)
 		//
 		//
 		container.s3.putBucketWebsite(params, function(error, data) {
+
+			//
+			//	1.	Check if there was an error
+			//
+			if(error)
+			{
+				return reject(error);
+			}
+
+			//
+			//	-> Move to the next chain
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Update the Bucket policy to make sure it is accessible by the public.
+//	Otherwise CloudFront won't be able to publish the site.
+//
+function change_bucket_policy(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		//
+		//	1.	Set the parameters to change the Bucket policy
+		//
+		let params = {
+			Bucket: container.bucket,
+			Policy: JSON.stringify({
+				Version: '2012-10-17',
+				Statement: [
+				{
+					Sid: 'PublicReadGetObject',
+					Effect: 'Allow',
+					Principal: '*',
+					Action: 's3:GetObject',
+					Resource: 'arn:aws:s3:::' + counter.bucket + '/*'
+				}
+				]
+			})
+		};
+
+		//
+		//	2.	Replace the Policy
+		//
+		container.s3.putBucketPolicy(params, function(error, data) {
 
 			//
 			//	1.	Check if there was an error
