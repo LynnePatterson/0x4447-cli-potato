@@ -99,10 +99,6 @@ display_the_welcome_message(container)
 
 	}).then(function(container) {
 
-		return ask_for_the_distribution_id(container);
-
-	}).then(function(container) {
-
 		return create_aws_class(container);
 
 	}).then(function(container) {
@@ -273,46 +269,6 @@ function ask_for_aws_secret(container)
 			//	1.	Save the URL
 			//
 			container.aws_secret_access_key = aws_secret_access_key;
-
-			//
-			//	-> Move to the next chain
-			//
-			return resolve(container);
-
-		});
-
-	});
-}
-
-//
-//	Make sure the Configuration file is actually available in the system
-//
-function ask_for_the_distribution_id(container)
-{
-	return new Promise(function(resolve, reject) {
-
-		term.clear();
-
-		term("\n");
-
-		//
-		//	1.	Ask input from the user
-		//
-		term.yellow("\tEnter the CloudFront Distribution ID: ");
-
-		//
-		//	2.	Listen for the user input
-		//
-		term.inputField({}, function(error, distribution_id) {
-
-			term("\n");
-
-			term.yellow("\tLoading...");
-
-			//
-			//	1.	Save the URL
-			//
-			container.distribution_id = distribution_id;
 
 			//
 			//	-> Move to the next chain

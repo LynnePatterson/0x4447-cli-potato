@@ -16,6 +16,14 @@ module.exports = function(container) {
 
 			}).then(function(container) {
 
+				return list_cloudfront_distributions(container);
+
+			}).then(function(container) {
+
+				return look_for_distribution_id(container);
+
+			}).then(function(container) {
+
 				return invalidate_cloudfront(container);
 
 			}).then(function(container) {
@@ -136,6 +144,80 @@ function pick_a_bucket(container)
 //	Upload the file to the S3 bucket so we can deliver something
 //
 //	.upload();
+
+function list_cloudfront_distributions(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		container.cloudfront.listDistributions({}, function(error, data) {
+
+			//
+			//	1.	Check if there was no error
+			//
+			if(error)
+			{
+				return reject(new Error(error.message));
+			}
+
+			//
+			//	2.	Save the response as is for the next chain
+			//
+			container.distributions = data.DistributionList.Items
+
+			//
+			//	->	Move to the next step once the animation finishes drawing
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+function look_for_distribution_id(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		//
+		//	1.	Make a variable that will hold the Distribution ID
+		//
+		let distribution_id = null;
+
+		//
+		//	2.	Loop over the result and look for the domain
+		//
+		for(let key in container.distributions)
+		{
+			//
+			//	1.	See if the distribution contains the domain that we
+			//		care about
+			//
+			if(container.distributions[key].Aliases.Items[0] == container.bucket)
+			{
+				//
+				//	1.	Save the Distribution ID once we found the domain
+				//
+				distribution_id = container.distributions[key].Id
+
+				//
+				//	->	Stop the loop to preserve CPU cycles
+				//
+				break;
+			}
+		}
+
+		//
+		//	3.	Save the distribution ID for the next chain
+		//
+		container.distribution_id = distribution_id
+
+		//
+		//	->	Move to the next step once the animation finishes drawing
+		//
+		return resolve(container);
+
+	});
+}
 
 //
 //	Read all the files in the directory
