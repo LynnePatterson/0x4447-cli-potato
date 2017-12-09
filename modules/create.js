@@ -45,6 +45,26 @@ module.exports = function(container) {
 
 			}).then(function(container) {
 
+				return list_all_certificates(container);
+
+			}).then(function(container) {
+
+				return look_for_domain_certificate(container);
+
+			}).then(function(container) {
+
+				return create_a_certificate(container);
+
+			}).then(function(container) {
+
+				return get_certificate_metadata(container);
+
+			}).then(function(container) {
+
+				return update_route53_with_cert_validation(container);
+
+			}).then(function(container) {
+
 				return resolve(container)
 
 			}).catch(function(error) {
@@ -525,7 +545,7 @@ function create_a_route_53_record(container)
 }
 
 //
-//	If we don't have the domain in ROute 53 then we just print out
+//	If we don't have the domain in Route 53 then we just print out
 //	what needs to be set in the domain to make sure all the traffic
 //	goes to CloudFront
 //
@@ -570,3 +590,287 @@ function print_domain_configuration(container)
 
 	});
 }
+
+function list_all_certificates(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		container.acm.listCertificates({}, function(error, data) {
+
+			//
+			//	1.	Check if there was no error
+			//
+			if(error)
+			{
+				return reject(new Error(error.message));
+			}
+
+			//
+			//	2.	Save an array of certs to the proceed
+			//
+			container.certificates = data.CertificateSummaryList
+
+			//
+			//	->	Move to the next step once the animation finishes drawing
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+function look_for_domain_certificate(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		//
+		//	1.	Create a variable to store the ARN of the cert
+		//
+		let arn = null;
+
+		//
+		//	2.	Loop over all the certs that we got
+		//
+		for(let key in container.certificates)
+		{
+			//
+			//	1.	Look for a match
+			//
+			if(container.certificates[key].DomainName == container.bucket)
+			{
+				//
+				//	1.	Save the ARN once it is found
+				//
+				arn = container.certificates[key].CertificateArn
+
+				//
+				//	->	Stop the loop to preserve CPU
+				//
+				break;
+			}
+		}
+
+		//
+		//	3.	Save the ARN to be used in the next chain
+		//
+		console.arn = arn;
+
+		//
+		//	->	Move to the next step once the animation finishes drawing
+		//
+		return resolve(container);
+
+	});
+}
+
+function create_a_certificate(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		//
+		//	1.	Skip this step if the ARN is found
+		//
+		if(container.arn)
+		{
+			//
+			//	->	Move to the next chain
+			//
+			return resolve(container);
+		}
+
+		//
+		//	2.	Prepare the data to create a certificate
+		//
+		//		Warning:
+		//
+		//			IdempotencyToken - is used by AWS to understand if you
+		//			by mistake made the same request multiple times. This
+		//			way you won't get a ton of cert that are the same.
+		//
+		let params = {
+			DomainName: container.bucket,
+			IdempotencyToken: 'rnd_0x4447',
+			ValidationMethod: 'DNS'
+		};
+
+		//
+		//	3.	Tell AWS that we want a new certificate
+		//
+		container.acm.requestCertificate(params, function(error, data) {
+
+			//
+			//	1.	Check if there was no error
+			//
+			if(error)
+			{
+				return reject(new Error(error.message));
+			}
+
+			//
+			//	2.	Save an array of certs to the proceed
+			//
+			container.arn = data.CertificateArn;
+
+			//
+			//	->	Move to the next step once the animation finishes drawing
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+function get_certificate_metadata(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		//
+		//	1.	Make a variable that will keep all the information to create
+		//		a certificate
+		//
+		let params = {
+			CertificateArn: container.arn
+		};
+
+		//
+		//	2.	Start the main loop and set the counter at 0
+		//
+		main(0)
+
+		//
+		//	3.	The main function that will loop until it get the Resource
+		//		record to then use to update the DNS setting of the domain
+		//
+		//		We need to do it this way because when you create a Cert
+		//		AWS will take a moment before the cert set in stone.
+		//
+		//		This main will also timeout after 15 sec.
+		//
+		function main(count)
+		{
+			//
+			//	1.	Get the full description of the cert
+			//
+			container.acm.describeCertificate(params, function(error, data) {
+
+				//
+				//	1.	Check if there was no error
+				//
+				if(error)
+				{
+					return reject(new Error(error.message));
+				}
+
+				//
+				//	2. Save the information to validate the cert
+				//
+				let record = data.Certificate.DomainValidationOptions[0].ResourceRecord;
+
+				//
+				//	3.	Check if we reached the limits of retries
+				//
+				if(count >= 15)
+				{
+					//
+					//	1.	If we reached the limit we stop the app because
+					//		there is no point in stressing out AWS
+					//
+					return reject(new Error("Unable to get a cert ARN"));
+				}
+
+				//
+				//	4.	Check if we got the data that we need from AWS
+				//
+				if(record)
+				{
+					//
+					//	1.	Save the data for the next chain
+					//
+					container.cert_validation = record
+
+					//
+					//	->	Move to the next step once the animation finishes
+					//		drawing
+					//
+					return resolve(container);
+				}
+
+				//
+				//	5.	Set a timeout of 1 sec
+				//
+				setTimeout(function() {
+
+					//
+					//	1.	Increases the counter so we can keep track of how
+					//		many loops did we do.
+					//
+					count++;
+
+					//
+					//	2.	Restart the main function to check if now we'll
+					//		get what we need
+					//
+					main(count);
+
+				}, 1000);
+
+			});
+
+		}
+
+	});
+}
+
+function update_route53_with_cert_validation(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		//
+		//	1.	Create all the options to create a new record that will
+		//		be used to confirm the ownership of the cert
+		//
+		let params = {
+			ChangeBatch: {
+				Changes: [
+				{
+					Action: "CREATE",
+					ResourceRecordSet: {
+						Name: container.cert_validation.Name,
+						ResourceRecords: [{
+							Value: container.cert_validation.Value
+						}],
+						TTL: 60,
+						Type: container.cert_validation.Type
+					}
+				}
+				],
+				Comment: "Proof of ownership"
+			},
+			HostedZoneId: container.zone_id
+		};
+
+		//
+		//	2.	Create a new DNS record
+		//
+		container.route53.changeResourceRecordSets(params, function(error, data) {
+
+			//
+			//	1.	Check if there was no error
+			//
+			if(error)
+			{
+				return reject(new Error(error.message));
+			}
+
+			//
+			//	->	Move to the next step once the animation finishes drawing
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+

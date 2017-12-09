@@ -175,7 +175,7 @@ function display_the_welcome_message(container)
 		let options = {
 			flashStyle: term.brightWhite,
 			style: term.brightYellow,
-			delay: 20
+			delay: 10
 		}
 
 		//
@@ -350,9 +350,18 @@ function create_aws_class(container)
 		});
 
 		//
-		//	4.	Create the AWS Route 53 object
+		//	3.	Create the AWS Route 53 object
 		//
 		container.route53 = new aws.Route53({
+			accessKeyId: container.aws_access_key_id,
+			secretAccessKey: container.aws_secret_access_key
+		});
+
+		//
+		//	4. Create the AWS Certificate Manager object
+		//
+		container.acm = new aws.ACM({
+			region: 'us-east-1',
 			accessKeyId: container.aws_access_key_id,
 			secretAccessKey: container.aws_secret_access_key
 		});

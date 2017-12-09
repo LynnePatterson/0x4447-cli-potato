@@ -57,3 +57,4 @@ typings/
 # dotenv environment variables file
 .env
 
+r_and_d*
