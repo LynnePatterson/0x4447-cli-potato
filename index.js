@@ -91,6 +91,7 @@ term.clear();
 //
 let container = {
 	dir: process.cwd() + "/" + process.argv[3],
+	region: 'us-east-1'
 };
 
 //
@@ -107,7 +108,7 @@ display_the_welcome_message(container)
 
 	}).then(function(container) {
 
-		return create_aws_class(container);
+		return create_aws_classes(container);
 
 	}).then(function(container) {
 
@@ -291,7 +292,7 @@ function ask_for_aws_secret(container)
 //
 //	Read the configuration file
 //
-function create_aws_class(container)
+function create_aws_classes(container)
 {
 	return new Promise(function(resolve, reject) {
 
@@ -299,7 +300,7 @@ function create_aws_class(container)
 		//	1.	Create the AWS S3 object
 		//
 		container.s3 = new aws.S3({
-			region: 'us-east-1',
+			region: container.region,
 			accessKeyId: container.aws_access_key_id,
 			secretAccessKey: container.aws_secret_access_key
 		});
@@ -308,7 +309,7 @@ function create_aws_class(container)
 		//	2.	Create the AWS CloudFront object
 		//
 		container.cloudfront = new aws.CloudFront({
-			region: 'us-east-1',
+			region: container.region,
 			accessKeyId: container.aws_access_key_id,
 			secretAccessKey: container.aws_secret_access_key
 		});
@@ -325,7 +326,7 @@ function create_aws_class(container)
 		//	4. Create the AWS Certificate Manager object
 		//
 		container.acm = new aws.ACM({
-			region: 'us-east-1',
+			region: container.region,
 			accessKeyId: container.aws_access_key_id,
 			secretAccessKey: container.aws_secret_access_key
 		});

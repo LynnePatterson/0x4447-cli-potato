@@ -207,10 +207,7 @@ function create_a_bucket(container)
 		//
 		//
 		let params = {
-			Bucket: container.bucket,
-			CreateBucketConfiguration: {
-				LocationConstraint: "us-west-1"
-			}
+			Bucket: container.bucket
 		};
 
 		//
@@ -227,14 +224,11 @@ function create_a_bucket(container)
 			}
 
 			//
-			//	2.	Pares the S3 Bucket URL
+			//	2.	Make a precise Bucket URL so CloudFront will redirect all
+			//		request to the main domain and not straight to the
+			//		S3 Bucket
 			//
-			let bucket_url = url.parse(data.Location);
-
-			//
-			//	3.	Get and save only the hostname part
-			//
-			container.bucket_url_path = bucket_url.hostname
+			container.bucket_url_path = container.bucket + '.s3-website-' + container.region + '.amazonaws.com';
 
 			//
 			//	-> Move to the next chain
