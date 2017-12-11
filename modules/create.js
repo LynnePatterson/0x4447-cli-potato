@@ -45,7 +45,19 @@ module.exports = function(container) {
 
 			}).then(function(container) {
 
+				return list_hosted_zones(container)
+
+			}).then(function(container) {
+
+				return look_for_domain(container)
+
+			}).then(function(container) {
+
 				return update_route53_with_cert_validation(container);
+
+			}).then(function(container) {
+
+				return check_certificate_validity(container);
 
 			}).then(function(container) {
 
@@ -53,11 +65,15 @@ module.exports = function(container) {
 
 			}).then(function(container) {
 
-				return list_hosted_zones(container)
+				return get_all_domain_records(container);
 
 			}).then(function(container) {
 
-				return look_for_domain(container)
+				return look_for_domain_entry(container);
+
+			}).then(function(container) {
+
+				return delete_domain_entry(container);
 
 			}).then(function(container) {
 
@@ -107,14 +123,20 @@ function ask_for_the_domain(container)
 		//
 		//	2.	Listen for the user input
 		//
-		term.inputField({}, function(error, bucket) {
+		term.inputField({}, function(error, dns) {
 
 			term("\n");
 
 			term.yellow("\tLoading...");
 
 			//
-			//	1.	Save the URL while getting the base domain, for example:
+			//	1.	Save the domain as is for any other sourpuss then changing
+			//		the domain settings.
+			//
+			container.bucket = dns;
+
+			//
+			//	2.	Save the URL while getting the base domain, for example:
 			//
 			//		subdomain.0x4447.com
 			//
@@ -124,7 +146,7 @@ function ask_for_the_domain(container)
 			//
 			//		No matter how deep the sobdomain goes.
 			//
-			container.bucket = bucket.split('.').slice(-2).join('.');
+			container.domain = dns.split('.').slice(-2).join('.');
 
 			//
 			//	-> Move to the next chain
@@ -557,6 +579,90 @@ function get_certificate_metadata(container)
 	});
 }
 
+//
+//	Query route 53 to get all the domains that are available
+//
+function list_hosted_zones(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		//
+		//	1.
+		//
+		container.route53.listHostedZones({}, function(error, data) {
+
+			//
+			//	1.	Check if there was an error
+			//
+			if(error)
+			{
+				return reject(error);
+			}
+
+			//
+			//	3.	Save the result for the next chain
+			//
+			container.zones = data.HostedZones;
+
+			//
+			//	-> Move to the next chain
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Query route 53 to get all the domains that are available
+//
+function look_for_domain(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		//
+		//	1.	Create a variable that will store the Zone ID
+		//
+		let zone_id = '';
+
+		//
+		//	2.	Loop over all the Zones that we got to look for the
+		//		domain and grab the Zone ID
+		//
+		for(let key in container.zones)
+		{
+			//
+			//	1.	Compare the domains
+			//
+			if(container.zones[key].Name == container.domain + '.')
+			{
+				//
+				//	1.	Save the Zone ID
+				//
+				zone_id = container.zones[key].Id.split("/")[2];
+
+				//
+				//	->	Brake to preserve CPU cycles
+				//
+				break;
+			}
+		}
+
+		//
+		//	3.	Save the zone ID for later
+		//
+		container.zone_id = zone_id;
+
+		//
+		//	-> Move to the next chain
+		//
+		return resolve(container);
+
+	});
+
+}
+
 function update_route53_with_cert_validation(container)
 {
 	return new Promise(function(resolve, reject) {
@@ -604,6 +710,105 @@ function update_route53_with_cert_validation(container)
 			return resolve(container);
 
 		});
+
+	});
+}
+
+function check_certificate_validity(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		//
+		//	1.	Ask input from the user
+		//
+		term.yellow("\tWaiting for Certificate to validate: ");
+
+		//
+		//	1.	Make a variable that will keep all the information to create
+		//		a certificate
+		//
+		let params = {
+			CertificateArn: container.cert_arn
+		};
+
+		//
+		//	2.	Start the main loop and set the counter at 0
+		//
+		main();
+
+		//
+		//	3.	The main function that will loop until it get the Resource
+		//		record to then use to update the DNS setting of the domain
+		//
+		//		We need to do it this way because when you create a Cert
+		//		AWS will take a moment before the cert set in stone.
+		//
+		//		This main will also timeout after 15 sec.
+		//
+		function main()
+		{
+			//
+			//	1.	Get the full description of the cert
+			//
+			container.acm.describeCertificate(params, function(error, data) {
+
+				//
+				//	1.	Check if there was no error
+				//
+				if(error)
+				{
+					return reject(new Error(error.message));
+				}
+
+				//
+				//	2. Save the information to validate the cert
+				//
+				let status = data.Certificate.DomainValidationOptions[0].ValidationStatus;
+
+				//
+				//	3.	Check if we reached the limits of retries
+				//
+				if(status === 'FAILED')
+				{
+					//
+					//	1.	If we reached the limit we stop the app because
+					//		there is no point in stressing out AWS
+					//
+					return reject(new Error("Cert failed to confirm"));
+				}
+
+				//
+				//	4.	Check if we got the data that we need from AWS
+				//
+				if(status === 'SUCCESS')
+				{
+					//
+					//	->	Move to the next step once the animation finishes
+					//		drawing
+					//
+					return resolve(container);
+				}
+
+				//
+				//	5.	Set a timeout of 1 sec
+				//
+				setTimeout(function() {
+
+					//
+					//	2.	Restart the main function to check if now we'll
+					//		get what we need
+					//
+					main();
+
+				}, 1000);
+
+			});
+
+		}
 
 	});
 }
@@ -696,7 +901,7 @@ function create_a_distribution(container)
 					}
 				},
 				ViewerCertificate: {
-					ACMCertificateArn: container.cert_arn,
+					ACMCertificateArn: 'arn:aws:acm:us-east-1:239748505547:certificate/f7534bb3-52a9-467a-b736-e2692308a816',
 					CertificateSource: 'acm',
 					CloudFrontDefaultCertificate: false,
 					MinimumProtocolVersion: 'TLSv1.1_2016',
@@ -734,16 +939,24 @@ function create_a_distribution(container)
 }
 
 //
-//	Query route 53 to get all the domains that are available
+//	Get all the DNS settings for a specific domain so we can see if what
+//	we want to set can be set.
 //
-function list_hosted_zones(container)
+function get_all_domain_records(container)
 {
 	return new Promise(function(resolve, reject) {
 
 		//
-		//	1.
+		//	1.	Specify the Domain that we want the date from
 		//
-		container.route53.listHostedZones({}, function(error, data) {
+		params = {
+			HostedZoneId: container.zone_id
+		};
+
+		//
+		//	2.	Request all the DSN records
+		//
+		container.route53.listResourceRecordSets(params, function(error, data) {
 
 			//
 			//	1.	Check if there was an error
@@ -754,9 +967,9 @@ function list_hosted_zones(container)
 			}
 
 			//
-			//	3.	Save the result for the next chain
+			//	2.	Save the result for the next chain
 			//
-			container.zones = data.HostedZones;
+			container.entries = data.ResourceRecordSets
 
 			//
 			//	-> Move to the next chain
@@ -769,44 +982,54 @@ function list_hosted_zones(container)
 }
 
 //
-//	Query route 53 to get all the domains that are available
+//	Loop over the DNS records and check if the record type that we want to
+//	already exists
 //
-function look_for_domain(container)
+function look_for_domain_entry(container)
 {
 	return new Promise(function(resolve, reject) {
 
 		//
-		//	1.	Create a variable that will store the Zone ID
+		//	1.	Create a variable that will store the DNS entry
 		//
-		let zone_id = '';
+		let dns_entry = null;
 
 		//
 		//	2.	Loop over all the Zones that we got to look for the
 		//		domain and grab the Zone ID
 		//
-		for(let key in container.zones)
+		for(let key in container.entries)
 		{
 			//
-			//	1.	Compare the domains
+			//	1.	Check if the domain name entry matches our own
 			//
-			if(container.zones[key].Name == container.bucket + '.')
+			if(container.entries[key].Name == container.bucket + '.')
 			{
 				//
-				//	1.	Save the Zone ID
+				//	1.	Once the have the domain matching see if it has a
+				//		record of type A
 				//
-				zone_id = container.zones[key].Id.split("/")[2]
+				if(container.entries[key].Type == 'A')
+				{
+					//
+					//	1.	Save the whole object since it is needed to
+					//		delete the entry, and this whole object is
+					//		used to match the delete action
+					//
+					dns_entry = container.entries[key]
 
-				//
-				//	->	Brake to preserve CPU cycles
-				//
-				break;
+					//
+					//	->	Brake to preserve CPU cycles
+					//
+					break;
+				}
 			}
 		}
 
 		//
-		//	3.	Save the zone ID for later
+		//	3.	Save the entry for the next entry
 		//
-		container.zone_id = zone_id;
+		container.dns_entry = dns_entry;
 
 		//
 		//	-> Move to the next chain
@@ -814,7 +1037,68 @@ function look_for_domain(container)
 		return resolve(container);
 
 	});
+}
 
+//
+//	Delete the same entry type that we wanted to add
+//
+function delete_domain_entry(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		//
+		//	1. Check if a record was found
+		//
+		if(!container.dns_entry)
+		{
+			//
+			//	->	Move to the next step
+			//
+			return resolve(container);
+		}
+
+		//
+		//	2.	Create the Delete action for Route 53
+		//
+		let params = {
+			ChangeBatch: {
+				Changes: [{
+					Action: "DELETE",
+					ResourceRecordSet: container.dns_entry
+				}]
+			},
+			HostedZoneId: container.zone_id
+		};
+
+		//
+		//	3.	Perform the action on Route 53
+		//
+		container.route53.changeResourceRecordSets(params, function(error, data) {
+
+			//
+			//	1.	Check if there was no error
+			//
+			if(error)
+			{
+				return reject(new Error(error.message));
+			}
+
+			//
+			//	2.	Wait few sec since the delete action is not instant, but
+			//		it is fast enough that constantly checking is overkill
+			//
+			setTimeout(function() {
+
+				//
+				//	->	Move to the next step
+				//
+				return resolve(container);
+
+			}, 3000)
+
+		});
+
+	});
 }
 
 //
@@ -911,7 +1195,7 @@ function print_domain_configuration(container)
 
 		term("\n");
 
-		term.brightWhite("\tPoint your domain name " + container.bucket + " to the following A record");
+		term.brightWhite("\tPoint your domain name " + container.domain + " to the following A record");
 
 		term("\n");
 
