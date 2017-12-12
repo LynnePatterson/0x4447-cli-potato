@@ -105,7 +105,7 @@ module.exports = function(container) {
 //
 
 //
-//	Make sure the Configuration file is actually available in the system
+//	Ask the user the name of the domain they want to create
 //
 function ask_for_the_domain(container)
 {
@@ -159,14 +159,15 @@ function ask_for_the_domain(container)
 }
 
 //
-//	Make sure the Configuration file is actually available in the system
+//	Before we do anything use the domain provided by the user and we check to
+//	see if it is exists already by trying to read the default index.html file
 //
 function check_if_bucket_exists(container)
 {
 	return new Promise(function(resolve, reject) {
 
 		//
-		//
+		//	1.	The options for S3
 		//
 		let params = {
 			Bucket: container.bucket,
@@ -174,7 +175,7 @@ function check_if_bucket_exists(container)
 		};
 
 		//
-		//
+		//	2.	Try to get a file from the provided bucket
 		//
 		container.s3.getObject(params, function(error, data) {
 
@@ -183,7 +184,7 @@ function check_if_bucket_exists(container)
 			//
 			if(data)
 			{
-				return reject(new Error("Website already exists"));
+				return reject(new Error("The website already exists"));
 			}
 
 			//
@@ -197,21 +198,21 @@ function check_if_bucket_exists(container)
 }
 
 //
-//	Make sure the Configuration file is actually available in the system
+//	Now that we know that the bucked doesn't exists we can create it
 //
 function create_a_bucket(container)
 {
 	return new Promise(function(resolve, reject) {
 
 		//
-		//
+		//	1.	The options for S3
 		//
 		let params = {
 			Bucket: container.bucket
 		};
 
 		//
-		//
+		//	2.	Create the bucket
 		//
 		container.s3.createBucket(params, function(error, data) {
 
@@ -226,7 +227,7 @@ function create_a_bucket(container)
 			//
 			//	2.	Make a precise Bucket URL so CloudFront will redirect all
 			//		request to the main domain and not straight to the
-			//		S3 Bucket
+			//		S3 Bucket prior to the domain propagation
 			//
 			container.bucket_url_path = container.bucket + '.s3-website-' + container.region + '.amazonaws.com';
 
@@ -241,14 +242,15 @@ function create_a_bucket(container)
 }
 
 //
-//	Make sure the Configuration file is actually available in the system
+//	After creating a bucket we need to tell S3 that this bucket will be
+//	hosting a website
 //
 function convert_bucket_to_site(container)
 {
 	return new Promise(function(resolve, reject) {
 
 		//
-		//
+		//	1.	The options for S3
 		//
 		let params = {
 			Bucket: container.bucket,
@@ -263,7 +265,7 @@ function convert_bucket_to_site(container)
 		};
 
 		//
-		//
+		//	2.	Convert the bucket in to a website
 		//
 		container.s3.putBucketWebsite(params, function(error, data) {
 
@@ -335,16 +337,24 @@ function change_bucket_policy(container)
 	});
 }
 
+////////////////////////////////////////////////////////////////////////////////
 //
 //	Upload the file to the S3 bucket so we can deliver something
 //
 //	.upload();
 //
+////////////////////////////////////////////////////////////////////////////////
 
+//
+//	List all the SSL certificates in the account
+//
 function list_all_certificates(container)
 {
 	return new Promise(function(resolve, reject) {
 
+		//
+		//	1.	Ask AWS for all the certificates in the account
+		//
 		container.acm.listCertificates({}, function(error, data) {
 
 			//
@@ -370,6 +380,10 @@ function list_all_certificates(container)
 	});
 }
 
+//
+//	Take the list of certificates that we got and look if we already have
+//	that certificate for that specific domain
+//
 function look_for_domain_certificate(container)
 {
 	return new Promise(function(resolve, reject) {
@@ -414,6 +428,9 @@ function look_for_domain_certificate(container)
 	});
 }
 
+//
+//	If we didn't find the certificate then we create one
+//
 function create_a_certificate(container)
 {
 	return new Promise(function(resolve, reject) {
@@ -472,6 +489,13 @@ function create_a_certificate(container)
 	});
 }
 
+//
+//	After creating the certificate we need to get some extra information
+//	so we can then use this information later in the code.
+//
+//	This promise will also loop 15 times and wait since when you create a
+//	certificate all its meta-data won't be available right away.
+//
 function get_certificate_metadata(container)
 {
 	return new Promise(function(resolve, reject) {
@@ -574,14 +598,14 @@ function get_certificate_metadata(container)
 }
 
 //
-//	Query route 53 to get all the domains that are available
+//	Query Route 53 to get all the domains that are available in the account
 //
 function list_hosted_zones(container)
 {
 	return new Promise(function(resolve, reject) {
 
 		//
-		//	1.
+		//	1.	Query Route 53 for all the Zones (domains)
 		//
 		container.route53.listHostedZones({}, function(error, data) {
 
@@ -609,7 +633,8 @@ function list_hosted_zones(container)
 }
 
 //
-//	Query route 53 to get all the domains that are available
+//	Go over the array of domains that we got and look for the one that we
+//	care about
 //
 function look_for_domain(container)
 {
@@ -657,6 +682,11 @@ function look_for_domain(container)
 
 }
 
+//
+//	Now that we have a new certificate, and we also found the Zone ID of the
+//	domain, we can add a new entry i the DNS so AWS can confirm the cert
+//	for us.
+//
 function update_route53_with_cert_validation(container)
 {
 	return new Promise(function(resolve, reject) {
@@ -708,6 +738,11 @@ function update_route53_with_cert_validation(container)
 	});
 }
 
+//
+//	After we added the entry to validate the cert we need to wait for
+//	AWS to validate it. To do this we are going to constantly check the
+//	state of the cert until it gets confirmed.
+//
 function check_certificate_validity(container)
 {
 	return new Promise(function(resolve, reject) {
@@ -808,14 +843,15 @@ function check_certificate_validity(container)
 }
 
 //
-//	Make sure the Configuration file is actually available in the system
+//	Now that we have everything, we can finally use all this data and
+//	create a CloudFront Distribution
 //
 function create_a_distribution(container)
 {
 	return new Promise(function(resolve, reject) {
 
 		//
-		//
+		//	1.	All the setting necessary to create a CF Distribution
 		//
 		let params = {
 			DistributionConfig: {
@@ -905,7 +941,7 @@ function create_a_distribution(container)
 		};
 
 		//
-		//
+		//	2.	Create the distribution
 		//
 		container.cloudfront.createDistribution(params, function(error, data) {
 
@@ -918,7 +954,9 @@ function create_a_distribution(container)
 			}
 
 			//
-			//	2.	Save the unique domain name of CloudFront
+			//	2.	Save the unique domain name of CloudFront which will
+			//		be used to create a DNS record so the domain will
+			//		point in the right place
 			//
 			container.cloudfront_domain_name = data.Distribution.DomainName
 
@@ -1034,7 +1072,8 @@ function look_for_domain_entry(container)
 }
 
 //
-//	Delete the same entry type that we wanted to add
+//	Make sure that if there is already a A entry in the domain setting we
+//	remove it before adding the new one.
 //
 function delete_domain_entry(container)
 {
@@ -1096,8 +1135,9 @@ function delete_domain_entry(container)
 }
 
 //
-//	If the domain is held in our Route 53 just create the record
-//	automatically
+//	Create a DNS entry that will point the domain to the CloudFront
+//	Distribution. If the domain is not found in Route 53 we just display
+//	what needs to be set in the DNS
 //
 function create_a_route_53_record(container)
 {

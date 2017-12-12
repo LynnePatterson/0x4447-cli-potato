@@ -7,9 +7,6 @@ let update = require('./modules/update');
 let create = require('./modules/create');
 let program = require('commander');
 
-
-//http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#putBucketWebsite-property
-
 //   _____   ______   _______   _______   _____   _   _    _____    _____
 //  / ____| |  ____| |__   __| |__   __| |_   _| | \ | |  / ____|  / ____|
 // | (___   | |__       | |       | |      | |   |  \| | | |  __  | (___
@@ -68,8 +65,8 @@ term.on('key', function(name, matches, data ) {
 //
 if(!program.source)
 {
-	console.log('Missing source')
-	process.exit(0)
+	console.log('Missing source');
+	process.exit(0);
 }
 
 //	 __  __              _____   _   _
@@ -112,11 +109,7 @@ display_the_welcome_message(container)
 
 	}).then(function(container) {
 
-		return check_aws_permissions(container);
-
-	}).then(function(container) {
-
-		return ask_if_new_or_update(container);
+		return ask_what_to_do(container);
 
 	}).then(function(container) {
 
@@ -134,7 +127,6 @@ display_the_welcome_message(container)
 
 	}).catch(function(error) {
 
-		console.log(error)
 		//
 		//	1.	Clear the screen of necessary text
 		//
@@ -193,18 +185,12 @@ function display_the_welcome_message(container)
 		//
 		term.slowTyping(text, options, function() {
 
-
-			setTimeout(function() {
-
-				//
-				//	->	Move to the next step once the animation finishes drawing
-				//
-				return resolve(container);
-
-			}, 1000)
+			//
+			//	->	Move to the next step once the animation finishes drawing
+			//
+			return resolve(container);
 
 		});
-
 
 	});
 }
@@ -290,7 +276,8 @@ function ask_for_aws_secret(container)
 }
 
 //
-//	Read the configuration file
+//	After we get all the necessary credentials we use them to create
+//	all the AWS object used to programmatically make all the work
 //
 function create_aws_classes(container)
 {
@@ -340,24 +327,9 @@ function create_aws_classes(container)
 }
 
 //
-//	Read the configuration file
+//	Ask the user what to do, since this app can create or update a project
 //
-function check_aws_permissions(container)
-{
-	return new Promise(function(resolve, reject) {
-
-		//
-		//	-> Move to the next chain
-		//
-		return resolve(container);
-
-	});
-}
-
-//
-//	Make sure the Configuration file is actually available in the system
-//
-function ask_if_new_or_update(container)
+function ask_what_to_do(container)
 {
 	return new Promise(function(resolve, reject) {
 
@@ -366,15 +338,14 @@ function ask_if_new_or_update(container)
 		term("\n");
 
 		//
-		//	1.	Draw the menu with one tab to the left to so the UI stay
-		//		consistent
+		//	1.	Default settings how to draw the ASCII menu
 		//
 		let options = {
 			leftPadding: "\t"
 		}
 
 		//
-		//
+		//	2.	The two options to show the user
 		//
 		let question = [
 			'Update',
@@ -382,7 +353,7 @@ function ask_if_new_or_update(container)
 		]
 
 		//
-		//	2.	Tell the user what we want from hi or her
+		//	2.	Ask the user what to do
 		//
 		term.yellow("\tUpdate or create a new website?");
 
@@ -403,8 +374,7 @@ function ask_if_new_or_update(container)
 			let selection = question[res.selectedIndex];
 
 			//
-			//	2.	Save the selection for other promises to use. It will
-			//		be used in API calls
+			//	2.	Save the user selection
 			//
 			container.selection = selection;
 
@@ -427,6 +397,9 @@ function ask_if_new_or_update(container)
 //
 
 //
+//	This is a function that depending on the option selected by the user
+//	returns just one specific promises that will then perform the
+//	action selected by the user.
 //
 function crossroad(container)
 {

@@ -47,14 +47,16 @@ module.exports = function(container) {
 // |_|      |_|  \_\  \____/  |_|  |_| |_____| |_____/  |______| |_____/
 //
 
-
 //
-//	Read the configuration file
+//	Read all the buckets that are hosted on this S3 account
 //
 function get_s3_buckets(container)
 {
 	return new Promise(function(resolve, reject) {
 
+		//
+		//	1.	List all buckets
+		//
 		container.s3.listBuckets(function(error, data) {
 
 			//
@@ -65,14 +67,26 @@ function get_s3_buckets(container)
 				return reject(error);
 			}
 
-			let buckets = []
+			//
+			//	2.	The variable that will hold all the buckets names
+			//
+			let buckets = [];
 
+			//
+			//	3.	Loop over the result and add the name to the array
+			//
 			data.Buckets.forEach(function(bucket) {
 
+				//
+				//	1.	Add the name to the array
+				//
 				buckets.push(bucket.Name);
 
 			});
 
+			//
+			//	4.	Save the bucket names for the next chain
+			//
 			container.buckets = buckets;
 
 			//
@@ -85,7 +99,7 @@ function get_s3_buckets(container)
 }
 
 //
-//	Make sure the Configuration file is actually available in the system
+//	Ask the user to pick a bucket to be updated
 //
 function pick_a_bucket(container)
 {
@@ -140,18 +154,27 @@ function pick_a_bucket(container)
 	});
 }
 
+////////////////////////////////////////////////////////////////////////////////
 //
 //	Upload the file to the S3 bucket so we can deliver something
 //
 //	.upload();
+//
+////////////////////////////////////////////////////////////////////////////////
+
 
 //
-//
+//	Get all the CloudFront Distributions so we can find out the ID that
+//	we have to use to invalidate the data, so cloud front will actually
+//	show the changes
 //
 function list_cloudfront_distributions(container)
 {
 	return new Promise(function(resolve, reject) {
 
+		//
+		//	1.	Ask for the distributions
+		//
 		container.cloudfront.listDistributions({}, function(error, data) {
 
 			//
@@ -178,7 +201,8 @@ function list_cloudfront_distributions(container)
 }
 
 //
-//
+//	Loop over all the distributions to find out the ID based on the
+//	domain name selected by the user
 //
 function look_for_distribution_id(container)
 {
@@ -226,14 +250,15 @@ function look_for_distribution_id(container)
 }
 
 //
-//	Read all the files in the directory
+//	Tell CloudFront to invalidate the cash so it can get new data that we
+//	just uploaded
 //
 function invalidate_cloudfront(container)
 {
 	return new Promise(function(resolve, reject) {
 
 		//
-		//
+		//	1.	Settings for CloudFront
 		//
 		let params = {
 			DistributionId: container.distribution_id,
@@ -247,7 +272,7 @@ function invalidate_cloudfront(container)
 		};
 
 		//
-		//
+		//	2.	Invalidate the cash
 		//
 		container.cloudfront.createInvalidation(params, function(error, data) {
 

@@ -5,10 +5,13 @@ let path = require('path');
 let term = require('terminal-kit').terminal;
 
 //
-//	Make a variable for the progress bar to use across this code base
+//	This variable allows the progress bar to be drawn
 //
 let progress_bar;
 
+//
+//	This Promises is responsible for just uploading files to S3.
+//
 module.exports = function(container) {
 
 	return new Promise(function(resolve, reject) {
@@ -40,7 +43,8 @@ module.exports = function(container) {
 //
 
 //
-//	Read all the files in the directory
+//	Read all the files in the directory while skipping some that we don't
+//	need on S3
 //
 function read_all_files(container)
 {
@@ -67,7 +71,7 @@ function read_all_files(container)
 					});
 
 		//
-		//	2.	Save all the files that we got
+		//	2.	Save all the files path that we got
 		//
 		container.files = files;
 
@@ -80,7 +84,9 @@ function read_all_files(container)
 }
 
 //
-//	Read all the files in the directory
+//	This promises is responsible for drawing on the screen the progress bar
+//	the first time and then start the upload process in a way that we wait
+//	for the upload process to finish.
 //
 function proxy_uploader(container)
 {
@@ -97,6 +103,10 @@ function proxy_uploader(container)
 			return resolve(container);
 		}
 
+		//
+		//	2.	Draw on the screen a message letting the user know
+		//		what to expect from this upload process
+		//
 		term.clear();
 
 		term("\n");
@@ -114,6 +124,9 @@ function proxy_uploader(container)
 		term("\n");
 		term("\n");
 
+		//
+		//	3.	Draw the progress bar with default options
+		//
 		progress_bar = term.progressBar({
 			width: 80,
 			title: '\tUploading:',
@@ -122,6 +135,10 @@ function proxy_uploader(container)
 			items: container.files.length
 		});
 
+		//
+		//	4.	Call the function responsible for uploading files to S3 in
+		//		a way where its wait for the upload process to finish.
+		//
 		uploader(container, function() {
 
 			//
@@ -143,26 +160,53 @@ function proxy_uploader(container)
 //
 
 //
-//	Make sure the Configuration file is actually available in the system
+//	The main upload function that will loop over all the files that
+//	we read and stop only once there are no more files to be uploaded.
 //
 function uploader(container, callback)
 {
-
+	//
+	//	1.	Take out a file path from the array
+	//
 	let file = container.files.shift();
 
+	//
+	//	2.	Check if we got anything from the previous operation.
+	//
 	if(!file)
 	{
+		//
+		//	->	Exit this function and return to the promise chain
+		//
 		return callback();
 	}
 
+	//
+	//	3.	Construct the full path to the file so it can be red
+	//
 	let full_path_file = container.dir + '/' + file
 
+	//
+	//	4.	Figure out the Mime type of the file so we can tell S3
+	//		what file is it dealing with. This way the page will be
+	//		displayed, if not the site will be downloaded instead of
+	//		displayed.
+	//
 	let mime_type = mime.lookup(full_path_file)
 
+	//
+	//	5.	Get the name of the file by discarding the format and the path
+	//
 	let base_name = path.basename(file);
 
+	//
+	//	6.	Tell the progress bar the name of the first item
+	//
 	progress_bar.startItem(base_name);
 
+	//
+	//	7.	Prepare the options for S3
+	//
 	let params = {
 		Bucket: container.bucket,
 		Key: file,
@@ -170,6 +214,9 @@ function uploader(container, callback)
 		Body: fs.createReadStream(full_path_file)
 	};
 
+	//
+	//	8.	Upload the file to S3 as a Stream
+	//
 	container.s3.upload(params, function(error, data) {
 
 		//
@@ -180,10 +227,13 @@ function uploader(container, callback)
 			return reject(error);
 		}
 
+		//
+		//	2.	Tell the progress bar which item is done
+		//
 		progress_bar.itemDone(file);
 
 		//
-		//
+		//	->	Restart the function to see if we can upload another file
 		//
 		uploader(container, callback)
 
