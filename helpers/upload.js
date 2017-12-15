@@ -133,7 +133,15 @@ function proxy_uploader(container)
 		//	4.	Call the function responsible for uploading files to S3 in
 		//		a way where its wait for the upload process to finish.
 		//
-		uploader(container, function() {
+		uploader(container, function(error) {
+
+			//
+			//	1.	Check if there was an error
+			//
+			if(error)
+			{
+				return reject(error);
+			}
 
 			//
 			//	->	Move to the next chain
@@ -218,7 +226,7 @@ function uploader(container, callback)
 		//
 		if(error)
 		{
-			return reject(error);
+			return callback(error);
 		}
 
 		//
