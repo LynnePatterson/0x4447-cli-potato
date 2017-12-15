@@ -53,22 +53,16 @@ function read_all_files(container)
 		//
 		//	1.	Read all file recursively
 		//
-		let files = read(container.dir)
-					.filter(function(name) {
+		let files = read(container.dir, function(name) {
 
-						if(name[0] !== '.')
-						{
-							return true;
-						}
+			if(name == '.git') 			return false;
+			if(name == '.gitignore') 	return false;
+			if(name == '.DS_Store') 	return false;
+			if(name == 'README.md') 	return false;
 
-					}).filter(function(name) {
+			return true;
 
-						if(name !== 'README.md')
-						{
-							return true;
-						}
-
-					});
+		});
 
 		//
 		//	2.	Save all the files path that we got
