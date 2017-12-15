@@ -197,17 +197,26 @@ function uploader(container, callback)
 	let mime_type = mime.lookup(full_path_file)
 
 	//
-	//	5.	Get the name of the file by discarding the format and the path
+	//	5.	If we weren't able to get a mime type then we set a default one
+	//		of just plain text.
+	//
+	if(!mime_type)
+	{
+		mime_type = 'text/plain';
+	}
+
+	//
+	//	6.	Get the name of the file by discarding the format and the path
 	//
 	let base_name = path.basename(file);
 
 	//
-	//	6.	Tell the progress bar the name of the first item
+	//	7.	Tell the progress bar the name of the first item
 	//
 	progress_bar.startItem(base_name);
 
 	//
-	//	7.	Prepare the options for S3
+	//	8.	Prepare the options for S3
 	//
 	let params = {
 		Bucket: container.bucket,
@@ -217,7 +226,7 @@ function uploader(container, callback)
 	};
 
 	//
-	//	8.	Upload the file to S3 as a Stream
+	//	9.	Upload the file to S3 as a Stream
 	//
 	container.s3.upload(params, function(error, data) {
 
