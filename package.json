@@ -8,7 +8,7 @@
     "url": "https://github.com/0x4447/0x4447-cli-potato"
   },
   "bin": {
-    "0x4447-potato": "./index.js"
+    "potato": "./index.js"
   },
   "keywords": [
     "cli",
