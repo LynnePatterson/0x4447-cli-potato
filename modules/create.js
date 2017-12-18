@@ -9,26 +9,6 @@ module.exports = function(container) {
 		ask_for_the_domain(container)
 			.then(function(container) {
 
-				return check_if_bucket_exists(container)
-
-			}).then(function(container) {
-
-				return create_a_bucket(container)
-
-			}).then(function(container) {
-
-				return convert_bucket_to_site(container)
-
-			}).then(function(container) {
-
-				return change_bucket_policy(container)
-
-			}).then(function(container) {
-
-				return upload(container)
-
-			}).then(function(container) {
-
 				return list_all_certificates(container);
 
 			}).then(function(container) {
@@ -58,6 +38,26 @@ module.exports = function(container) {
 			}).then(function(container) {
 
 				return check_certificate_validity(container);
+
+			}).then(function(container) {
+
+				return check_if_bucket_exists(container)
+
+			}).then(function(container) {
+
+				return create_a_bucket(container)
+
+			}).then(function(container) {
+
+				return convert_bucket_to_site(container)
+
+			}).then(function(container) {
+
+				return change_bucket_policy(container)
+
+			}).then(function(container) {
+
+				return upload(container)
 
 			}).then(function(container) {
 
@@ -157,217 +157,6 @@ function ask_for_the_domain(container)
 
 	});
 }
-
-//
-//	Before we do anything use the domain provided by the user and we check to
-//	see if it is exists already by trying to read the default index.html file
-//
-function check_if_bucket_exists(container)
-{
-	return new Promise(function(resolve, reject) {
-
-		term.clear();
-
-		term("\n");
-
-		term.yellow("\tChecking if the S3 Bucket Exists...");
-
-		//
-		//	1.	The options for S3
-		//
-		let params = {
-			Bucket: container.bucket,
-			Key: 'index.html'
-		};
-
-		//
-		//	2.	Try to get a file from the provided bucket
-		//
-		container.s3.getObject(params, function(error, data) {
-
-			//
-			//	1.	Check if there was an error
-			//
-			if(data)
-			{
-				return reject(new Error("The website already exists"));
-			}
-
-			//
-			//	-> Move to the next chain
-			//
-			return resolve(container);
-
-		});
-
-	});
-}
-
-//
-//	Now that we know that the bucked doesn't exists we can create it
-//
-function create_a_bucket(container)
-{
-	return new Promise(function(resolve, reject) {
-
-		term.clear();
-
-		term("\n");
-
-		term.yellow("\tCreating the S3 Bucket...");
-
-		//
-		//	1.	The options for S3
-		//
-		let params = {
-			Bucket: container.bucket
-		};
-
-		//
-		//	2.	Create the bucket
-		//
-		container.s3.createBucket(params, function(error, data) {
-
-			//
-			//	1.	Check if there was an error
-			//
-			if(error)
-			{
-				return reject(error);
-			}
-
-			//
-			//	2.	Make a precise Bucket URL so CloudFront will redirect all
-			//		request to the main domain and not straight to the
-			//		S3 Bucket prior to the domain propagation
-			//
-			container.bucket_url_path = container.bucket + '.s3-website-' + container.region + '.amazonaws.com';
-
-			//
-			//	-> Move to the next chain
-			//
-			return resolve(container);
-
-		});
-
-	});
-}
-
-//
-//	After creating a bucket we need to tell S3 that this bucket will be
-//	hosting a website
-//
-function convert_bucket_to_site(container)
-{
-	return new Promise(function(resolve, reject) {
-
-		term.clear();
-
-		term("\n");
-
-		term.yellow("\tConverting the S3 Bucket in to a website...");
-
-		//
-		//	1.	The options for S3
-		//
-		let params = {
-			Bucket: container.bucket,
-			WebsiteConfiguration: {
-				ErrorDocument: {
-					Key: "error.html"
-				},
-				IndexDocument: {
-					Suffix: "index.html"
-				}
-			}
-		};
-
-		//
-		//	2.	Convert the bucket in to a website
-		//
-		container.s3.putBucketWebsite(params, function(error, data) {
-
-			//
-			//	1.	Check if there was an error
-			//
-			if(error)
-			{
-				return reject(error);
-			}
-
-			//
-			//	-> Move to the next chain
-			//
-			return resolve(container);
-
-		});
-
-	});
-}
-
-//
-//	Update the Bucket policy to make sure it is accessible by the public.
-//	Otherwise CloudFront won't be able to publish the site.
-//
-function change_bucket_policy(container)
-{
-	return new Promise(function(resolve, reject) {
-
-		term.clear();
-
-		term("\n");
-
-		term.yellow("\tChanging S3 Bucket Policy...");
-
-		//
-		//	1.	Set the parameters to change the Bucket policy
-		//
-		let params = {
-			Bucket: container.bucket,
-			Policy: JSON.stringify({
-				Version: '2012-10-17',
-				Statement: [
-				{
-					Sid: 'PublicReadGetObject',
-					Effect: 'Allow',
-					Principal: '*',
-					Action: 's3:GetObject',
-					Resource: 'arn:aws:s3:::' + container.bucket + '/*'
-				}
-				]
-			})
-		};
-
-		//
-		//	2.	Replace the Policy
-		//
-		container.s3.putBucketPolicy(params, function(error, data) {
-
-			//
-			//	1.	Check if there was an error
-			//
-			if(error)
-			{
-				return reject(error);
-			}
-
-			//
-			//	-> Move to the next chain
-			//
-			return resolve(container);
-
-		});
-
-	});
-}
-
-////////////////////////////////////////////////////////////////////////////////
-//
-//	Upload the file to the S3 bucket so we can deliver something
-//
-//	.upload();
-//
-////////////////////////////////////////////////////////////////////////////////
 
 //
 //	List all the SSL certificates in the account
@@ -904,6 +693,217 @@ function check_certificate_validity(container)
 
 	});
 }
+
+//
+//	Before we do anything use the domain provided by the user and we check to
+//	see if it is exists already by trying to read the default index.html file
+//
+function check_if_bucket_exists(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tChecking if the S3 Bucket Exists...");
+
+		//
+		//	1.	The options for S3
+		//
+		let params = {
+			Bucket: container.bucket,
+			Key: 'index.html'
+		};
+
+		//
+		//	2.	Try to get a file from the provided bucket
+		//
+		container.s3.getObject(params, function(error, data) {
+
+			//
+			//	1.	Check if there was an error
+			//
+			if(data)
+			{
+				return reject(new Error("The website already exists"));
+			}
+
+			//
+			//	-> Move to the next chain
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Now that we know that the bucked doesn't exists we can create it
+//
+function create_a_bucket(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tCreating the S3 Bucket...");
+
+		//
+		//	1.	The options for S3
+		//
+		let params = {
+			Bucket: container.bucket
+		};
+
+		//
+		//	2.	Create the bucket
+		//
+		container.s3.createBucket(params, function(error, data) {
+
+			//
+			//	1.	Check if there was an error
+			//
+			if(error)
+			{
+				return reject(error);
+			}
+
+			//
+			//	2.	Make a precise Bucket URL so CloudFront will redirect all
+			//		request to the main domain and not straight to the
+			//		S3 Bucket prior to the domain propagation
+			//
+			container.bucket_url_path = container.bucket + '.s3-website-' + container.region + '.amazonaws.com';
+
+			//
+			//	-> Move to the next chain
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	After creating a bucket we need to tell S3 that this bucket will be
+//	hosting a website
+//
+function convert_bucket_to_site(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tConverting the S3 Bucket in to a website...");
+
+		//
+		//	1.	The options for S3
+		//
+		let params = {
+			Bucket: container.bucket,
+			WebsiteConfiguration: {
+				ErrorDocument: {
+					Key: "error.html"
+				},
+				IndexDocument: {
+					Suffix: "index.html"
+				}
+			}
+		};
+
+		//
+		//	2.	Convert the bucket in to a website
+		//
+		container.s3.putBucketWebsite(params, function(error, data) {
+
+			//
+			//	1.	Check if there was an error
+			//
+			if(error)
+			{
+				return reject(error);
+			}
+
+			//
+			//	-> Move to the next chain
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Update the Bucket policy to make sure it is accessible by the public.
+//	Otherwise CloudFront won't be able to publish the site.
+//
+function change_bucket_policy(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tChanging S3 Bucket Policy...");
+
+		//
+		//	1.	Set the parameters to change the Bucket policy
+		//
+		let params = {
+			Bucket: container.bucket,
+			Policy: JSON.stringify({
+				Version: '2012-10-17',
+				Statement: [
+				{
+					Sid: 'PublicReadGetObject',
+					Effect: 'Allow',
+					Principal: '*',
+					Action: 's3:GetObject',
+					Resource: 'arn:aws:s3:::' + container.bucket + '/*'
+				}
+				]
+			})
+		};
+
+		//
+		//	2.	Replace the Policy
+		//
+		container.s3.putBucketPolicy(params, function(error, data) {
+
+			//
+			//	1.	Check if there was an error
+			//
+			if(error)
+			{
+				return reject(error);
+			}
+
+			//
+			//	-> Move to the next chain
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//	Upload the file to the S3 bucket so we can deliver something
+//
+//	.upload();
+//
+////////////////////////////////////////////////////////////////////////////////
 
 //
 //	Now that we have everything, we can finally use all this data and
