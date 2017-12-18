@@ -166,6 +166,12 @@ function check_if_bucket_exists(container)
 {
 	return new Promise(function(resolve, reject) {
 
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tChecking if the S3 Bucket Exists...");
+
 		//
 		//	1.	The options for S3
 		//
@@ -203,6 +209,12 @@ function check_if_bucket_exists(container)
 function create_a_bucket(container)
 {
 	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tCreating the S3 Bucket...");
 
 		//
 		//	1.	The options for S3
@@ -249,6 +261,12 @@ function convert_bucket_to_site(container)
 {
 	return new Promise(function(resolve, reject) {
 
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tConverting the S3 Bucket in to a website...");
+
 		//
 		//	1.	The options for S3
 		//
@@ -294,6 +312,12 @@ function convert_bucket_to_site(container)
 function change_bucket_policy(container)
 {
 	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tChanging S3 Bucket Policy...");
 
 		//
 		//	1.	Set the parameters to change the Bucket policy
@@ -352,6 +376,12 @@ function list_all_certificates(container)
 {
 	return new Promise(function(resolve, reject) {
 
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tGetting all Certificates...");
+
 		//
 		//	1.	Ask AWS for all the certificates in the account
 		//
@@ -387,6 +417,12 @@ function list_all_certificates(container)
 function look_for_domain_certificate(container)
 {
 	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tLooking for Domain Certificate...");
 
 		//
 		//	1.	Create a variable to store the ARN of the cert
@@ -434,6 +470,12 @@ function look_for_domain_certificate(container)
 function create_a_certificate(container)
 {
 	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tCreating the Certificate...");
 
 		//
 		//	1.	Skip this step if the ARN is found
@@ -500,6 +542,12 @@ function get_certificate_metadata(container)
 {
 	return new Promise(function(resolve, reject) {
 
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tGetting Certificate Meta-Data...");
+
 		//
 		//	1.	Make a variable that will keep all the information to create
 		//		a certificate
@@ -545,7 +593,7 @@ function get_certificate_metadata(container)
 				//
 				//	3.	Check if we reached the limits of retries
 				//
-				if(count >= 15)
+				if(count >= 30)
 				{
 					//
 					//	1.	If we reached the limit we stop the app because
@@ -604,6 +652,12 @@ function list_hosted_zones(container)
 {
 	return new Promise(function(resolve, reject) {
 
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tListing Hosted Zones...");
+
 		//
 		//	1.	Query Route 53 for all the Zones (domains)
 		//
@@ -639,6 +693,12 @@ function list_hosted_zones(container)
 function look_for_domain(container)
 {
 	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tLooking for Domain...");
 
 		//
 		//	1.	Create a variable that will store the Zone ID
@@ -690,6 +750,12 @@ function look_for_domain(container)
 function update_route53_with_cert_validation(container)
 {
 	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tUpdate Route 53 with Certificate validation...");
 
 		//
 		//	1.	Create all the options to create a new record that will
@@ -751,10 +817,7 @@ function check_certificate_validity(container)
 
 		term("\n");
 
-		//
-		//	1.	Ask input from the user
-		//
-		term.yellow("\tWaiting for Certificate to validate: ");
+		term.yellow("\tWaiting for Certificate to validate...");
 
 		//
 		//	1.	Make a variable that will keep all the information to create
@@ -850,6 +913,12 @@ function create_a_distribution(container)
 {
 	return new Promise(function(resolve, reject) {
 
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tCreating a CloudFront Distribution...");
+
 		//
 		//	1.	All the setting necessary to create a CF Distribution
 		//
@@ -931,8 +1000,7 @@ function create_a_distribution(container)
 					}
 				},
 				ViewerCertificate: {
-					ACMCertificateArn: 'arn:aws:acm:us-east-1:239748505547:certificate/f7534bb3-52a9-467a-b736-e2692308a816',
-					CertificateSource: 'acm',
+					ACMCertificateArn: container.cert_arn,
 					CloudFrontDefaultCertificate: false,
 					MinimumProtocolVersion: 'TLSv1.1_2016',
 					SSLSupportMethod: 'sni-only'
@@ -978,6 +1046,12 @@ function get_all_domain_records(container)
 {
 	return new Promise(function(resolve, reject) {
 
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tGetting all the Domain Records...");
+
 		//
 		//	1.	Specify the Domain that we want the date from
 		//
@@ -1020,6 +1094,12 @@ function get_all_domain_records(container)
 function look_for_domain_entry(container)
 {
 	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tLooking for domain entry...");
 
 		//
 		//	1.	Create a variable that will store the DNS entry
@@ -1090,6 +1170,12 @@ function delete_domain_entry(container)
 			return resolve(container);
 		}
 
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tDeleting duplicate entry...");
+
 		//
 		//	2.	Create the Delete action for Route 53
 		//
@@ -1153,6 +1239,12 @@ function create_a_route_53_record(container)
 			//
 			return resolve(container);
 		}
+
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tCreating a new Entry...");
 
 		//
 		//	2.	All the options to add a new record
