@@ -243,7 +243,7 @@ function look_for_domain_certificate(container)
 		//
 		//	3.	Save the ARN to be used in the next chain
 		//
-		console.cert_arn = arn;
+		container.cert_arn = arn;
 
 		//
 		//	->	Move to the next step once the animation finishes drawing
@@ -260,12 +260,6 @@ function create_a_certificate(container)
 {
 	return new Promise(function(resolve, reject) {
 
-		term.clear();
-
-		term("\n");
-
-		term.yellow("\tCreating the Certificate...");
-
 		//
 		//	1.	Skip this step if the ARN is found
 		//
@@ -276,6 +270,12 @@ function create_a_certificate(container)
 			//
 			return resolve(container);
 		}
+
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tCreating the Certificate...");
 
 		//
 		//	2.	Prepare the data to create a certificate
@@ -540,6 +540,17 @@ function update_route53_with_cert_validation(container)
 {
 	return new Promise(function(resolve, reject) {
 
+		//
+		//	1.	Skip this step if the ARN is found
+		//
+		if(container.cert_arn)
+		{
+			//
+			//	->	Move to the next chain
+			//
+			return resolve(container);
+		}
+
 		term.clear();
 
 		term("\n");
@@ -606,7 +617,7 @@ function check_certificate_validity(container)
 
 		term("\n");
 
-		term.yellow("\tWaiting for Certificate to validate...");
+		term.yellow("\tWaiting 30 sec for Certificate to validate...");
 
 		//
 		//	1.	Make a variable that will keep all the information to create
@@ -682,12 +693,19 @@ function check_certificate_validity(container)
 					//
 					//	1. Explain the situation
 					//
+					term("\n");
+					term("\n");
 					term.yellow("\tWe did try for 30 sec but the cert is still waiting for validation.");
+					term("\n");
 					term.yellow("\tYou should visit the following AWS Console section to monitor the cert");
+					term("\n");
 					term("\n");
 					term.yellow("\thttps://console.aws.amazon.com/acm/home?region=" + container.region);
 					term("\n");
+					term("\n");
 					term.yellow("\tOnce the cert is validated re-run this CLI with the same domain that you used before.");
+					term("\n");
+					term("\n");
 
 					//
 					//	->	Exit the app since there is nothing more to do.
