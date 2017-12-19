@@ -324,7 +324,7 @@ function create_a_certificate(container)
 //	After creating the certificate we need to get some extra information
 //	so we can then use this information later in the code.
 //
-//	This promise will also loop 15 times and wait since when you create a
+//	This promise will also loop 30 times and wait since when you create a
 //	certificate all its meta-data won't be available right away.
 //
 function get_certificate_metadata(container)
@@ -619,7 +619,7 @@ function check_certificate_validity(container)
 		//
 		//	2.	Start the main loop and set the counter at 0
 		//
-		main();
+		main(0);
 
 		//
 		//	3.	The main function that will loop until it get the Resource
@@ -630,7 +630,7 @@ function check_certificate_validity(container)
 		//
 		//		This main will also timeout after 15 sec.
 		//
-		function main()
+		function main(count)
 		{
 			//
 			//	1.	Get the full description of the cert
@@ -675,15 +675,42 @@ function check_certificate_validity(container)
 				}
 
 				//
+				//	3.	Check if we reached the limits of retries
+				//
+				if(count >= 30)
+				{
+					//
+					//	1. Explain the situation
+					//
+					term.yellow("\tWe did try for 30 sec but the cert is still waiting for validation.");
+					term.yellow("\tYou should visit the following AWS Console section to monitor the cert");
+					term("\n");
+					term.yellow("\thttps://console.aws.amazon.com/acm/home?region=" + container.region);
+					term("\n");
+					term.yellow("\tOnce the cert is validated re-run this CLI with the same domain that you used before.");
+
+					//
+					//	->	Exit the app since there is nothing more to do.
+					//
+					process.exit(11);
+				}
+
+				//
 				//	5.	Set a timeout of 1 sec
 				//
 				setTimeout(function() {
 
 					//
+					//	1.	Increases the counter so we can keep track of how
+					//		many loops did we do.
+					//
+					count++;
+
+					//
 					//	2.	Restart the main function to check if now we'll
 					//		get what we need
 					//
-					main();
+					main(count);
 
 				}, 1000);
 
