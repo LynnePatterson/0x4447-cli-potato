@@ -2,6 +2,15 @@ let url = require('url');
 let term = require('terminal-kit').terminal;
 let upload = require('../helpers/upload');
 
+//
+//	This promise is responsible for deploying a new  static website by
+//	automatically configuring
+//
+//	- Certificate Manager
+//	- Route 53
+//	- S3
+//	- CloudFront
+//
 module.exports = function(container) {
 
 	return new Promise(function(resolve, reject) {
@@ -115,19 +124,12 @@ function ask_for_the_domain(container)
 
 		term("\n");
 
-		//
-		//	1.	Ask input from the user
-		//
 		term.yellow("\tType the domain name: ");
 
 		//
-		//	2.	Listen for the user input
+		//	1.	Listen for the user input
 		//
 		term.inputField({}, function(error, dns) {
-
-			term("\n");
-
-			term.yellow("\tLoading...");
 
 			//
 			//	1.	Save the domain as is for any other sourpuss then changing
@@ -710,7 +712,7 @@ function check_certificate_validity(container)
 					//
 					//	->	Exit the app since there is nothing more to do.
 					//
-					process.exit(11);
+					return process.exit(11);
 				}
 
 				//

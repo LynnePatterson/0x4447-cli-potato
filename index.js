@@ -105,7 +105,7 @@ display_the_welcome_message(container)
 
 	}).then(function(container) {
 
-		return create_aws_classes(container);
+		return create_aws_objects(container);
 
 	}).then(function(container) {
 
@@ -279,7 +279,7 @@ function ask_for_aws_secret(container)
 //	After we get all the necessary credentials we use them to create
 //	all the AWS object used to programmatically make all the work
 //
-function create_aws_classes(container)
+function create_aws_objects(container)
 {
 	return new Promise(function(resolve, reject) {
 
@@ -337,12 +337,16 @@ function ask_what_to_do(container)
 
 		term("\n");
 
+		term.yellow("\tUpdate or create a new website?");
+
+		term('\n');
+
 		//
 		//	1.	Default settings how to draw the ASCII menu
 		//
 		let options = {
 			leftPadding: "\t"
-		}
+		};
 
 		//
 		//	2.	The two options to show the user
@@ -350,14 +354,7 @@ function ask_what_to_do(container)
 		let question = [
 			'Update',
 			'Create'
-		]
-
-		//
-		//	2.	Ask the user what to do
-		//
-		term.yellow("\tUpdate or create a new website?");
-
-		term('\n');
+		];
 
 		//
 		//	3.	Draw the drop down menu
@@ -365,8 +362,12 @@ function ask_what_to_do(container)
 		term.singleColumnMenu(question, options, function(error, res) {
 
 			term("\n");
+			term("\n");
 
 			term.yellow("\tLoading...");
+
+			term("\n");
+			term("\n");
 
 			//
 			//	1.	Get the Property name based on the user selection

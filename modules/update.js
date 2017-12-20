@@ -1,6 +1,10 @@
 let term = require('terminal-kit').terminal;
 let upload = require('../helpers/upload');
 
+//
+//	This promises is responsible for updating the content of a selected
+//	S3 bucket and invalidating the CloudFront Distribution Cash
+//
 module.exports = function(container) {
 
 	return new Promise(function(resolve, reject) {
@@ -109,6 +113,10 @@ function pick_a_bucket(container)
 
 		term("\n");
 
+		term.yellow("\tChoose the bucket that you want to update");
+
+		term('\n');
+
 		//
 		//	1.	Draw the menu with one tab to the left to so the UI stay
 		//		consistent
@@ -118,20 +126,9 @@ function pick_a_bucket(container)
 		}
 
 		//
-		//	2.	Tell the user what we want from hi or her
-		//
-		term.yellow("\tChoose the bucket that you want to update");
-
-		term('\n');
-
-		//
-		//	3.	Draw the drop down menu
+		//	2.	Draw the drop down menu
 		//
 		term.singleColumnMenu(container.buckets, options, function(error, res) {
-
-			term("\n");
-
-			term.yellow("\tLoading...");
 
 			//
 			//	1.	Get the Property name based on the user selection
@@ -276,6 +273,9 @@ function invalidate_cloudfront(container)
 		//
 		container.cloudfront.createInvalidation(params, function(error, data) {
 
+			//
+			//	1.	Check if there was no error
+			//
 			if(error)
 			{
 				return reject(new Error(error.message));
