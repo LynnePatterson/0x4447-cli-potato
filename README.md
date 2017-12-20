@@ -1,4 +1,4 @@
-# 0x4447 🥔 Potato
+# 0x4447 Potato 🥔
 
 The purpose of this CLI Tool is to streamline the process of hosting a static web page on S3 and delivering it using CloudFront.
 
@@ -21,7 +21,6 @@ To use this CLI you'll need to create a Programmatic user with the following Per
 
 ```
 potato -s PATH_TO_FOLDER
-
 ```
 
 # What this CLI dose
