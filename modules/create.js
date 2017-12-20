@@ -42,6 +42,10 @@ module.exports = function(container) {
 
 			}).then(function(container) {
 
+				return pre_certificate_check(container)
+
+			}).then(function(container) {
+
 				return update_route53_with_cert_validation(container);
 
 			}).then(function(container) {
@@ -534,6 +538,69 @@ function look_for_domain(container)
 }
 
 //
+//	First we do a quick check if the certificate is already verified, and based
+//	on this we might skip other future steps
+//
+function pre_certificate_check(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		term.clear();
+
+		term("\n");
+
+		term.yellow("\tPre check of the certificate...");
+
+		//
+		//	1.	Make a variable that will keep all the information to create
+		//		a certificate
+		//
+		let params = {
+			CertificateArn: container.cert_arn
+		};
+
+		//
+		//	1.	Get the full description of the cert
+		//
+		container.acm.describeCertificate(params, function(error, data) {
+
+			//
+			//	1.	Check if there was no error
+			//
+			if(error)
+			{
+				return reject(new Error(error.message));
+			}
+
+			//
+			//	2. Save the information to validate the cert
+			//
+			let status = data.Certificate.DomainValidationOptions[0].ValidationStatus;
+
+			//
+			//	4.	Check if the cert is valid
+			//
+			if(status === 'SUCCESS')
+			{
+				//
+				//	1.	Mark the cert to be valid so we can make future
+				//		decision in the future.
+				//
+				container.cert_already_alid = true;
+			}
+
+			//
+			//	->	Move to the next step once the animation finishes
+			//		drawing
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
 //	Now that we have a new certificate, and we also found the Zone ID of the
 //	domain, we can add a new entry i the DNS so AWS can confirm the cert
 //	for us.
@@ -543,12 +610,38 @@ function update_route53_with_cert_validation(container)
 	return new Promise(function(resolve, reject) {
 
 		//
-		//	1.	Skip this step if the ARN is found
+		//	1.	Check if:
+		//
+		//		- No Domain found on Route 53
+		//		- and Cert is invalid
+		//
+		//		And if this matches, then we display instructions how to
+		//		update the DNS to allow the cert verification.
+		//
+		if(!container.zone_id && !container.cert_already_alid)
+		{
+			term("\n");
+			term("\n");
+			term.yellow("\tYour domain is not managed by Route 53, please edit the DNS record and add the following:");
+			term("\n");
+			term("\n");
+			term.yellow("\t" + container.cert_validation.Name + " CNAME " + container.cert_validation.Value);
+			term("\n");
+			term("\n");
+
+			//
+			//	->	After displaying the message stop the app.
+			//
+			return process.exit(11);
+		}
+
+		//
+		//	2.	Skip this step if the ARN is found
 		//
 		if(container.cert_arn)
 		{
 			//
-			//	->	Move to the next chain
+			//	-> Move to the next chain
 			//
 			return resolve(container);
 		}
