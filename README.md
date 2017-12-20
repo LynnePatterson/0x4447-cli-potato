@@ -2,6 +2,10 @@
 
 The purpose of this CLI Tool is to streamline the process of hosting a static web page on S3 and delivering it using CloudFront.
 
+<div align="center">
+	<img src="https://raw.githubusercontent.com/0x4447/0x4447-cli-potato/master/assets/main.png?token=AAZF6kORd96uXPYsq5noabhSoKya6oUBks5aQ5KLwA%3D%3D">
+</div>
+
 # How to Install
 
 ```
